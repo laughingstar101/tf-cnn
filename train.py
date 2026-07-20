@@ -1,6 +1,6 @@
 import tensorflow.compat.v1 as tf
 import argparse
-import mnist  # assuming this is your custom module
+import mnist
 from model import Model
 
 NUM_LABELS = 10
@@ -62,7 +62,7 @@ if __name__ == '__main__':
     parser.add_argument('--num_iter', type=int, default=5000,
                         help='number of training iterations')
     parser.add_argument('--checkpoint_file_path', type=str,
-                        default='checkpoints/model.ckpt-10000',
+                        default='checkpoints/model.ckpt-5000',
                         help='path to checkpoint file')
     parser.add_argument('--train_data', type=str,
                         default='data/mnist_train.csv',
