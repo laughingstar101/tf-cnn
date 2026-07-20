@@ -24,7 +24,7 @@ def load_test_data(data_path):
     x_test = test_data[:, 1:]
 
     y_test = np.array(test_data[:, 0])
-    y_test = (np.arrange(10) == y_test[:, None]).astype(np.float32)
+    y_test = (np.arange(10) == y_test[:, None]).astype(np.float32)
 
     x_test = x_test.reshape(len(x_test), IMAGE_SIZE, IMAGE_SIZE, 1)
 
