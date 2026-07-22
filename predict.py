@@ -26,5 +26,5 @@ if __name__ == "__main__":
     if len(sys.argv) < 2:
         print("Usage: python predict.py <path_to_image>")
     else:
-        predict(sys.argv[1], "checkpoints/model.ckpt-5000-5000")
+        predict(sys.argv[1], "checkpoints/model.ckpt-10000")
 
