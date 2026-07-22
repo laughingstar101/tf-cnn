@@ -1,33 +1,24 @@
-# Source - https://stackoverflow.com/a/55968472
-# Posted by Naveen Kumar Dasari, modified by community. See post 'Timeline' for change history
-# Retrieved 2026-07-22, License - CC BY-SA 4.0
-# Modified to work with modern Pillow and return (1,28,28,1) array with 0-255 values.
-
 import numpy as np
 from PIL import Image, ImageFilter
 
 def process_image_to_mnist(argv):
-    """
-    This function returns the pixel values as a numpy array of shape (1, 28, 28, 1)
-    with values in range 0-255 (black digit on white background).
-    The input is a png file location.
-    """
     # 1. Open and convert to grayscale
     im = Image.open(argv).convert('L')
     width = float(im.size[0])
     height = float(im.size[1])
 
-    # 2. Auto-invert if background is dark (mean < 128)
+    # 2. FORCE INVERSION: Always make it Black background, White digit
     img_arr = np.array(im, dtype=np.float32)
-    if np.mean(img_arr) < 128:
+    # If the background is light (white), invert it.
+    # If the background is already dark (black), leave it.
+    if np.mean(img_arr) > 128:  # Changed from < 128 to > 128
         im = Image.fromarray((255 - img_arr).astype(np.uint8))
 
-    # 3. Create white canvas of 28x28
-    newImage = Image.new('L', (28, 28), 255)
+    # 3. Create BLACK canvas of 28x28 (was 255!)
+    newImage = Image.new('L', (28, 28), 0)  # Changed from 255 to 0
 
-    # 4. Resize to 20-pixel side while preserving aspect ratio, then paste at offset (4,4)
+    # 4. Resize to 20-pixel side, preserving aspect ratio
     if width > height:
-        # Width is bigger → width becomes 20 pixels
         nheight = int(round((20.0 / width * height), 0))
         if nheight == 0:
             nheight = 1
@@ -35,7 +26,6 @@ def process_image_to_mnist(argv):
         wtop = int(round(((28 - nheight) / 2), 0))
         newImage.paste(img, (4, wtop))
     else:
-        # Height is bigger → height becomes 20 pixels
         nwidth = int(round((20.0 / height * width), 0))
         if nwidth == 0:
             nwidth = 1
@@ -43,11 +33,10 @@ def process_image_to_mnist(argv):
         wleft = int(round(((28 - nwidth) / 2), 0))
         newImage.paste(img, (wleft, 4))
 
-    # 5. Convert to numpy array and reshape to (1, 28, 28, 1)
-    arr = np.array(newImage, dtype=np.float32)   # shape (28, 28)
-    arr = arr.reshape(1, 28, 28, 1)              # shape (1, 28, 28, 1)
+    # 5. Convert to numpy array
+    arr = np.array(newImage, dtype=np.float32)
+    arr = arr.reshape(1, 28, 28, 1)
     return arr
-
 
 if __name__ == "__main__":
     import sys
