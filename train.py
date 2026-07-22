@@ -18,7 +18,7 @@ def train(args):
                            dtype=tf.float32, name='x')
         y = tf.placeholder(shape=[None, NUM_LABELS], dtype=tf.float32, name='y')
         keep_prob = tf.placeholder(tf.float32, name='dropout_prob')
-        global_step = tf.train.get_or_create_global_step()   # tf.contrib removed
+        global_step = tf.train.get_or_create_global_step()
 
         logits = model.inference(x, keep_prob=keep_prob)
         loss = model.loss(logits=logits, labels=y)
