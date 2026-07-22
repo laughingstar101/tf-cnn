@@ -60,7 +60,7 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('--batch_size', type=int, default=128,
                         help='size of training batches')
-    parser.add_argument('--num_iter', type=int, default=10000,
+    parser.add_argument('--num_iter', type=int, default=20000,
                         help='number of training iterations')
     parser.add_argument('--checkpoint_file_path', type=str,
                         default='checkpoints/model.ckpt',
