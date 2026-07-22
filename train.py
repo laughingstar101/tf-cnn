@@ -11,6 +11,7 @@ def train(args):
     model = Model()
     images, val_images, labels, val_labels = mnist.load_train_data(args.train_data)
 
+    # Create dataset
     dataset = tf.data.Dataset.from_tensor_slices((images, labels))
     dataset = dataset.shuffle(10000).batch(args.batch_size).repeat().prefetch(1)
     iterator = dataset.make_initializable_iterator()
@@ -23,11 +24,6 @@ def train(args):
     loss = model.loss(logits=logits, labels=next_y)
     accuracy = model.accuracy(logits, next_y)
 
-    val_x = tf.placeholder(tf.float32, shape=[None, 28, 28, 1], name='val_x')
-    val_y = tf.placeholder(tf.float32, shape=[None, 10], name='val_y')
-    val_logits = model.inference(val_x, keep_prob=1.0)
-    val_accuracy = model.accuracy(val_logits, val_y)
-
     summary_op = tf.summary.merge_all()
     train_op = model.train(loss, global_step=global_step)
 
@@ -39,34 +35,20 @@ def train(args):
         sess.run(init)
         sess.run(iterator.initializer)
 
-        best_val_acc = 0.0
-        patience = 1000
-        wait = 0
-        best_checkpoint_path = "checkpoints/best_model.ckpt"
-
         for i in range(args.num_iter):
             try:
                 if i % 100 == 0:
-                    _, cur_loss, summary, val_acc = sess.run(
-                        [train_op, loss, summary_op, val_accuracy],
-                        feed_dict={keep_prob: 0.5, val_x: val_images, val_y: val_labels}
-                    )
+                    _, cur_loss, summary = sess.run([train_op, loss, summary_op],
+                                                    feed_dict={keep_prob: 0.5})
                     writer.add_summary(summary, i)
-                    print(f'Iter {i}, loss: {cur_loss:.4f}')
-                    print(f'Validation Accuracy: {val_acc:.4f}')
-
-                    if val_acc > best_val_acc:
-                        best_val_acc = val_acc
-                        wait = 0
-                        saver.save(sess, best_checkpoint_path, global_step=global_step)
-                    else:
-                        wait += 100
-                        if wait >= patience:
-                            print(f"Early stopping at iteration {i} with best val acc {best_val_acc:.4f}")
-                            saver.restore(sess, best_checkpoint_path)
-                            break
                 else:
                     _, cur_loss = sess.run([train_op, loss], feed_dict={keep_prob: 0.5})
+
+                if i % 100 == 0:
+                    print(f'Iter {i}, loss: {cur_loss:.4f}')
+                    # validation accuracy
+                    val_acc = sess.run(accuracy, feed_dict={keep_prob: 1.0})
+                    print(f'Validation Accuracy: {val_acc:.4f}')
 
                 if i == args.num_iter - 1:
                     saver.save(sess, args.checkpoint_file_path, global_step)
@@ -78,7 +60,7 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('--batch_size', type=int, default=128,
                         help='size of training batches')
-    parser.add_argument('--num_iter', type=int, default=20000,
+    parser.add_argument('--num_iter', type=int, default=10000,
                         help='number of training iterations')
     parser.add_argument('--checkpoint_file_path', type=str,
                         default='checkpoints/model.ckpt',
