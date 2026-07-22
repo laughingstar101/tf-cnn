@@ -38,12 +38,9 @@ class Model(object):
             conv3 = tf.nn.relu(preactivation, name=scope.name)
             self._activation_summary(conv3)
 
-        # pool 3
-        h_pool3 = self._create_max_pool_2x2(conv3)
-
         with tf.variable_scope('local1') as scope:
-            reshape = tf.reshape(h_pool3, [-1, 4 * 4 * 128])
-            W_fc1 = self._create_weights([4 * 4 * 128, 1024])
+            reshape = tf.reshape(conv3, [-1, 7 * 7 * 128])
+            W_fc1 = self._create_weights([7 * 7 * 128, 1024])
             b_fc1 = self._create_bias([1024])
             local1 = tf.nn.relu(tf.matmul(reshape, W_fc1) + b_fc1, name=scope.name)
             self._activation_summary(local1)
