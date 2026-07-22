@@ -1,0 +1,9 @@
+[project]
+name = "tf-cnn"
+version = "1.0.0"
+dependencies = [
+    "tensorflow==2.10.0",
+    "numpy<2",
+    "pillow",
+    "scipy",
+]
