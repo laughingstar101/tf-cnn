@@ -89,7 +89,7 @@ if __name__ == '__main__':
     parser.add_argument(
         '--checkpoint_file_path', 
         type=str,
-        default='checkpoints/model.ckpt-5000-5000',
+        default='checkpoints/model.ckpt-10000',
         help='path to checkpoint file'
     )
     parser.add_argument(
