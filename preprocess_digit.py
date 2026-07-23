@@ -15,7 +15,7 @@ def otsu_threshold(hist):
     threshold = 0
 
     for t in range(256):
-        w_back += hist[t]               # weight background
+        w_back += hist[t]
         if w_back == 0:
             continue
         w_fore = total_pixels - w_back
