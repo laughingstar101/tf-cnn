@@ -6,11 +6,11 @@ warnings.filterwarnings('ignore')
 
 import tensorflow.compat.v1 as tf
 from model import Model
-from preprocess_digit import process_image_to_mnist  # import the new function
+from preprocess_digit import process_image_to_mnist
 
 def predict(image_path, checkpoint_path):
     # 1. Process the image
-    input_batch = process_image_to_mnist(image_path)  # shape: (1, 28, 28, 1)
+    input_batch = process_image_to_mnist(image_path)
 
     # 2. Build a fresh graph for this prediction
     with tf.Graph().as_default():
@@ -40,7 +40,7 @@ if __name__ == "__main__":
 
     mode = sys.argv[1].lower()
     path = sys.argv[2]
-    checkpoint = "checkpoints/model.ckpt"
+    checkpoint = "checkpoints/model.ckpt-20000"
 
     if mode == "file":
         if not os.path.isFile(path):

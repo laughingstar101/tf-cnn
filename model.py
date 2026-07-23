@@ -2,13 +2,13 @@ import tensorflow.compat.v1 as tf
 tf.disable_v2_behavior()   # force TF1.x behavior even in TF2
 
 class Model(object):
-    def __init__(self, batch_size=128, learning_rate=1e-4, num_labels=10):
+    def __init__(self, batch_size=128, learning_rate=1e-3, num_labels=10):
         self._batch_size = batch_size
         self._learning_rate = learning_rate
         self._num_labels = num_labels
 
     def inference(self, images, keep_prob):
-        with tf.variable_scope('conv1') as scope:
+        with tf.variable_scope('conv1', reuse=tf.AUTO_REUSE) as scope:
             kernel = self._create_weights([5, 5, 1, 32])
             conv = self._create_conv2d(images, kernel)
             bias = self._create_bias([32])
@@ -19,7 +19,7 @@ class Model(object):
         # pool 1
         h_pool1 = self._create_max_pool_2x2(conv1)
 
-        with tf.variable_scope('conv2') as scope:
+        with tf.variable_scope('conv2', reuse=tf.AUTO_REUSE) as scope:
             kernel = self._create_weights([5, 5, 32, 64])
             conv = self._create_conv2d(h_pool1, kernel)
             bias = self._create_bias([64])
@@ -30,7 +30,7 @@ class Model(object):
         # pool 2
         h_pool2 = self._create_max_pool_2x2(conv2)
         
-        with tf.variable_scope('conv3') as scope:
+        with tf.variable_scope('conv3', reuse=tf.AUTO_REUSE) as scope:
             kernel = self._create_weights([3, 3, 64, 128])
             conv = self._create_conv2d(h_pool2, kernel)
             bias = self._create_bias([128])
@@ -38,14 +38,14 @@ class Model(object):
             conv3 = tf.nn.relu(preactivation, name=scope.name)
             self._activation_summary(conv3)
 
-        with tf.variable_scope('local1') as scope:
+        with tf.variable_scope('local1', reuse=tf.AUTO_REUSE) as scope:
             reshape = tf.reshape(conv3, [-1, 7 * 7 * 128])
-            W_fc1 = self._create_weights([7 * 7 * 128, 1024])
-            b_fc1 = self._create_bias([1024])
+            W_fc1 = self._create_weights([7 * 7 * 128, 256])
+            b_fc1 = self._create_bias([256])
             local1 = tf.nn.relu(tf.matmul(reshape, W_fc1) + b_fc1, name=scope.name)
             self._activation_summary(local1)
 
-        with tf.variable_scope('local2_linear') as scope:
+        with tf.variable_scope('local2_linear', reuse=tf.AUTO_REUSE) as scope:
             W_fc2 = self._create_weights([1024, self._num_labels])
             b_fc2 = self._create_bias([self._num_labels])
             local1_drop = tf.nn.dropout(local1, keep_prob)
@@ -73,22 +73,34 @@ class Model(object):
         return accuracy
 
     def _create_conv2d(self, x, W):
-        return tf.nn.conv2d(input=x,
-                            filter=W,
-                            strides=[1, 1, 1, 1],
-                            padding='SAME')
+        return tf.nn.conv2d(
+            input=x,
+            filter=W,
+            strides=[1, 1, 1, 1],
+            padding='SAME'
+        )
 
     def _create_max_pool_2x2(self, input):
-        return tf.nn.max_pool(value=input,
-                              ksize=[1, 2, 2, 1],
-                              strides=[1, 2, 2, 1],
-                              padding='SAME')
+        return tf.nn.max_pool(
+            value=input,
+            ksize=[1, 2, 2, 1],
+            strides=[1, 2, 2, 1],
+            padding='SAME'
+        )
 
     def _create_weights(self, shape):
-        return tf.Variable(tf.truncated_normal(shape=shape, stddev=0.1, dtype=tf.float32))
+        return tf.get_variable(
+            name='weights',
+            shape=shape,
+            initializer=tf.truncated_normal_initializer(stddev=0.1)
+        )
 
     def _create_bias(self, shape):
-        return tf.Variable(tf.constant(1., shape=shape, dtype=tf.float32))
+        return tf.get_variable(
+            name='biases',
+            shape=shape,
+            initializer=tf.constant_initializer(1.0)
+        )
 
     def _activation_summary(self, x):
         tensor_name = x.op.name

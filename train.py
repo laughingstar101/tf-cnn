@@ -11,18 +11,26 @@ def train(args):
     model = Model()
     images, val_images, labels, val_labels = mnist.load_train_data(args.train_data)
 
-    # Create dataset
+    # Training dataset
     dataset = tf.data.Dataset.from_tensor_slices((images, labels))
     dataset = dataset.shuffle(10000).batch(args.batch_size).repeat().prefetch(1)
     iterator = dataset.make_initializable_iterator()
     next_x, next_y = iterator.get_next()
 
+    # Training placeholders
     keep_prob = tf.placeholder(tf.float32, name='dropout_prob')
     global_step = tf.train.get_or_create_global_step()
 
     logits = model.inference(next_x, keep_prob=keep_prob)
     loss = model.loss(logits=logits, labels=next_y)
-    accuracy = model.accuracy(logits, next_y)
+    # training accuracy (optional, for logging)
+    train_acc = model.accuracy(logits, next_y)
+
+    # ---------- VALIDATION PLACEHOLDERS (separate) ----------
+    val_x = tf.placeholder(tf.float32, shape=[None, 28, 28, 1], name='val_x')
+    val_y = tf.placeholder(tf.float32, shape=[None, 10], name='val_y')
+    val_logits = model.inference(val_x, keep_prob=1.0)      # no dropout for validation
+    val_accuracy = model.accuracy(val_logits, val_y)
 
     summary_op = tf.summary.merge_all()
     train_op = model.train(loss, global_step=global_step)
@@ -38,17 +46,29 @@ def train(args):
         for i in range(args.num_iter):
             try:
                 if i % 100 == 0:
-                    _, cur_loss, summary = sess.run([train_op, loss, summary_op],
-                                                    feed_dict={keep_prob: 0.5})
+                    # Training step with summary – must feed validation placeholders
+                    _, cur_loss, summary = sess.run(
+                        [train_op, loss, summary_op],
+                        feed_dict={
+                            keep_prob: 0.5,
+                            val_x: val_images,   # needed because summary includes val summaries
+                            val_y: val_labels
+                        }
+                    )
                     writer.add_summary(summary, i)
-                else:
-                    _, cur_loss = sess.run([train_op, loss], feed_dict={keep_prob: 0.5})
 
-                if i % 100 == 0:
+                    # Real validation accuracy
+                    val_acc = sess.run(
+                        val_accuracy,
+                        feed_dict={val_x: val_images, val_y: val_labels}
+                    )
                     print(f'Iter {i}, loss: {cur_loss:.4f}')
-                    # validation accuracy
-                    val_acc = sess.run(accuracy, feed_dict={keep_prob: 1.0})
                     print(f'Validation Accuracy: {val_acc:.4f}')
+                else:
+                    _, cur_loss = sess.run(
+                        [train_op, loss],
+                        feed_dict={keep_prob: 0.5}
+                    )
 
                 if i == args.num_iter - 1:
                     saver.save(sess, args.checkpoint_file_path, global_step)
@@ -58,9 +78,9 @@ def train(args):
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
-    parser.add_argument('--batch_size', type=int, default=128,
+    parser.add_argument('--batch_size', type=int, default=256,
                         help='size of training batches')
-    parser.add_argument('--num_iter', type=int, default=20000,
+    parser.add_argument('--num_iter', type=int, default=10000,
                         help='number of training iterations')
     parser.add_argument('--checkpoint_file_path', type=str,
                         default='checkpoints/model.ckpt',
