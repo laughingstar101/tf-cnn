@@ -23,10 +23,8 @@ def train(args):
 
     logits = model.inference(next_x, keep_prob=keep_prob)
     loss = model.loss(logits=logits, labels=next_y)
-    # training accuracy (optional, for logging)
     train_acc = model.accuracy(logits, next_y)
 
-    # ---------- VALIDATION PLACEHOLDERS (separate) ----------
     val_x = tf.placeholder(tf.float32, shape=[None, 28, 28, 1], name='val_x')
     val_y = tf.placeholder(tf.float32, shape=[None, 10], name='val_y')
     val_logits = model.inference(val_x, keep_prob=1.0)      # no dropout for validation
@@ -46,11 +44,11 @@ def train(args):
         for i in range(args.num_iter):
             try:
                 if i % 100 == 0:
-                    # Training step with summary – must feed validation placeholders
+                    # Training step with summary
                     _, cur_loss, summary = sess.run(
                         [train_op, loss, summary_op],
                         feed_dict={
-                            keep_prob: 0.5,
+                            keep_prob: 0.8,
                             val_x: val_images,   # needed because summary includes val summaries
                             val_y: val_labels
                         }
@@ -67,7 +65,7 @@ def train(args):
                 else:
                     _, cur_loss = sess.run(
                         [train_op, loss],
-                        feed_dict={keep_prob: 0.5}
+                        feed_dict={keep_prob: 0.8}
                     )
 
                 if i == args.num_iter - 1:
