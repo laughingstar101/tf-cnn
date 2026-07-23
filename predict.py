@@ -40,10 +40,13 @@ if __name__ == "__main__":
 
     mode = sys.argv[1].lower()
     path = sys.argv[2]
-    checkpoint = "checkpoints/model.ckpt-20000"
+    checkpoint = tf.train.latest_checkpoint("checkpoints")
+    if checkpoint is None:
+        print(f"No checkpoint found")
+        sys.exit(1)
 
     if mode == "file":
-        if not os.path.isFile(path):
+        if not os.path.isfile(path):
             print(f"Error: {path} is not a valid file")
             sys.exit(1)
         predict(path, checkpoint)
