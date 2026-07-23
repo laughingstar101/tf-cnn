@@ -5,9 +5,21 @@ tf.disable_v2_behavior()
 
 import mnist
 from model import Model
+import os
 
 def evaluate(args):
     test_images, test_labels = mnist.load_test_data(args.test_data)
+
+    # If no specific checkpoint provided, find the latest one
+    checkpoint_path = args.checkpoint_file_path
+    if checkpoint_path == "checkpoints/model.ckpt" or checkpoint_path.endswith("model.ckpt") and not os.path.exists(checkpoint_path + ".index"):
+        latest = tf.train.latest_checkpoint("checkpoints")
+        if latest is not None:
+            checkpoint_path = latest
+            print(f"Using latest checkpoint: {checkpoint_path}")
+        else:
+            print("No checkpoint found in checkpoints/ folder.")
+            return
 
     with tf.Graph().as_default():
         x = tf.placeholder(
@@ -25,20 +37,16 @@ def evaluate(args):
         model = Model()
         logits = model.inference(x, keep_prob=keep_prob)
         
-        # Get the actual predicted class and true class
         predictions = tf.argmax(logits, axis=1, name='predictions')
         true_labels = tf.argmax(y, axis=1, name='true_labels')
-        
-        # Overall accuracy (just for comparison)
         accuracy = model.accuracy(logits, y)
 
         saver = tf.train.Saver()
 
         with tf.Session() as sess:
             sess.run(tf.global_variables_initializer())
-            saver.restore(sess, args.checkpoint_file_path)
+            saver.restore(sess, checkpoint_path)
 
-            # Run the session to get predictions, true labels, and overall accuracy
             pred_vals, true_vals, overall_acc = sess.run(
                 [predictions, true_labels, accuracy],
                 feed_dict={
@@ -58,8 +66,7 @@ def evaluate(args):
             total_correct = 0
             total_wrong = 0
 
-            for digit in range(10):  # MNIST has digits 0-9
-                # Find all test samples that truly belong to this digit
+            for digit in range(10):
                 mask = (true_vals == digit)
                 total_digit = np.sum(mask)
 
@@ -68,7 +75,6 @@ def evaluate(args):
                     wrong = 0
                     acc = 0.0
                 else:
-                    # Count how many of those were predicted correctly
                     correct = np.sum(pred_vals[mask] == digit)
                     wrong = total_digit - correct
                     acc = correct / total_digit
@@ -78,7 +84,6 @@ def evaluate(args):
 
                 print(f"{digit:<8} | {correct:<10} | {wrong:<10} | {acc:.2%}")
 
-            # ---- Overall Summary ----
             print("-"*50)
             print(f"Overall Accuracy (calculated): {total_correct / (total_correct + total_wrong):.4f}")
             print(f"Overall Accuracy (from model):  {overall_acc:.4f}")
@@ -89,8 +94,8 @@ if __name__ == '__main__':
     parser.add_argument(
         '--checkpoint_file_path', 
         type=str,
-        default='checkpoints/model.ckpt-20000',
-        help='path to checkpoint file'
+        default='checkpoints/model.ckpt',
+        help='path to checkpoint file (or base name, will auto-find latest)'
     )
     parser.add_argument(
         '--test_data', 
