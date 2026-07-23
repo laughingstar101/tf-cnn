@@ -1,30 +1,65 @@
 import numpy as np
 from PIL import Image, ImageFilter
 
+def otsu_threshold(hist):
+    """Return the Otsu threshold for a histogram (array of length 256)."""
+    total_pixels = sum(hist)
+    if total_pixels == 0:
+        return 0
+
+    sum_total = sum(i * hist[i] for i in range(256))
+    sum_back = 0
+    w_back = 0
+    w_fore = 0
+    var_max = 0
+    threshold = 0
+
+    for t in range(256):
+        w_back += hist[t]               # weight background
+        if w_back == 0:
+            continue
+        w_fore = total_pixels - w_back
+        if w_fore == 0:
+            break
+        sum_back += t * hist[t]
+        mean_back = sum_back / w_back
+        mean_fore = (sum_total - sum_back) / w_fore
+        var_between = w_back * w_fore * (mean_back - mean_fore) ** 2
+        if var_between > var_max:
+            var_max = var_between
+            threshold = t
+    return threshold
+
 def process_image_to_mnist(image_path):
     # 1. Open and convert to grayscale
     im = Image.open(image_path).convert('L')
     img_arr = np.array(im, dtype=np.uint8)
 
-    # 2. Invert if necessary (so digit is white, background is black)
-    if np.mean(img_arr) > 128:
-        img_arr = 255 - img_arr
+    # 2. Compute histogram and Otsu threshold
+    hist = np.histogram(img_arr, bins=256, range=(0, 255))[0]
+    thresh = otsu_threshold(hist)
 
-    # 3. Find the bounding box of the actual digit (non-zero pixels)
-    rows = np.any(img_arr, axis=1)
-    cols = np.any(img_arr, axis=0)
-    
-    # If the image is completely blank, return a zero array
+    # 3. Apply threshold: foreground = 255, background = 0
+    binary = np.where(img_arr > thresh, 255, 0).astype(np.uint8)
+
+    # 4. Ensure the digit is white (foreground) and background black
+    # If more than half the pixels are white, we've inverted (background is white)
+    if np.mean(binary) > 127:
+        binary = 255 - binary
+
+    # 5. Find bounding box of the digit (non-zero pixels)
+    rows = np.any(binary, axis=1)
+    cols = np.any(binary, axis=0)
+
     if not rows.any() or not cols.any():
         return np.zeros((1, 28, 28, 1), dtype=np.float32)
 
     y_min, y_max = np.where(rows)[0][[0, -1]]
     x_min, x_max = np.where(cols)[0][[0, -1]]
 
-    # 4. Crop the digit tightly
-    cropped = img_arr[y_min:y_max+1, x_min:x_max+1]
+    cropped = binary[y_min:y_max+1, x_min:x_max+1]
 
-    # 5. Pad to a square (to avoid distortion when resizing)
+    # 6. Pad to square (preserve aspect ratio)
     h, w = cropped.shape
     side = max(h, w)
     pad_h = (side - h) // 2
@@ -36,22 +71,20 @@ def process_image_to_mnist(image_path):
         constant_values=0
     )
 
-    # 6. Resize to 20x20 using high-quality LANCZOS
+    # 7. Resize to 20x20 with high-quality filter
     pil_img = Image.fromarray(square)
     pil_img = pil_img.resize((20, 20), Image.Resampling.LANCZOS).filter(ImageFilter.SHARPEN)
     resized = np.array(pil_img, dtype=np.float32)
 
-    # 7. Normalize to 0-1 range
+    # 8. Normalize to 0-1 range
     if resized.max() > 0:
         resized = resized / 255.0
 
-    # 8. Place onto a 28x28 black canvas (center at 4,4)
+    # 9. Place onto 28x28 black canvas (center at 4,4)
     canvas = np.zeros((28, 28), dtype=np.float32)
     canvas[4:24, 4:24] = resized
 
-    # 9. Return as (1, 28, 28, 1)
     return canvas.reshape(1, 28, 28, 1)
-
 
 if __name__ == "__main__":
     import sys
