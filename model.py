@@ -38,15 +38,16 @@ class Model(object):
             conv3 = tf.nn.relu(preactivation, name=scope.name)
             self._activation_summary(conv3)
 
+        neurons_fc1 = 256
         with tf.variable_scope('local1', reuse=tf.AUTO_REUSE) as scope:
             reshape = tf.reshape(conv3, [-1, 7 * 7 * 128])
-            W_fc1 = self._create_weights([7 * 7 * 128, 256])
-            b_fc1 = self._create_bias([256])
+            W_fc1 = self._create_weights([7 * 7 * 128, neurons_fc1])
+            b_fc1 = self._create_bias([neurons_fc1])
             local1 = tf.nn.relu(tf.matmul(reshape, W_fc1) + b_fc1, name=scope.name)
             self._activation_summary(local1)
 
         with tf.variable_scope('local2_linear', reuse=tf.AUTO_REUSE) as scope:
-            W_fc2 = self._create_weights([1024, self._num_labels])
+            W_fc2 = self._create_weights([neurons_fc1, self._num_labels])
             b_fc2 = self._create_bias([self._num_labels])
             local1_drop = tf.nn.dropout(local1, keep_prob)
             local2 = tf.nn.bias_add(tf.matmul(local1_drop, W_fc2), b_fc2, name=scope.name)
