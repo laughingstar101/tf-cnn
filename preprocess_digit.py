@@ -9,13 +9,11 @@ def process_image_to_mnist(argv):
 
     # 2. FORCE INVERSION: Always make it Black background, White digit
     img_arr = np.array(im, dtype=np.float32)
-    # If the background is light (white), invert it.
-    # If the background is already dark (black), leave it.
-    if np.mean(img_arr) > 128:  # Changed from < 128 to > 128
+    if np.mean(img_arr) > 128:
         im = Image.fromarray((255 - img_arr).astype(np.uint8))
 
     # 3. Create BLACK canvas of 28x28 (was 255!)
-    newImage = Image.new('L', (28, 28), 0)  # Changed from 255 to 0
+    newImage = Image.new('L', (28, 28), 0)
 
     # 4. Resize to 20-pixel side, preserving aspect ratio
     if width > height:
@@ -34,7 +32,7 @@ def process_image_to_mnist(argv):
         newImage.paste(img, (wleft, 4))
 
     # 5. Convert to numpy array
-    arr = np.array(newImage, dtype=np.float32)
+    arr = np.array(newImage, dtype=np.float32) / 255
     arr = arr.reshape(1, 28, 28, 1)
     return arr
 
