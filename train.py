@@ -75,10 +75,12 @@ def train(args):
                 break
 
 if __name__ == '__main__':
+    num_iters = 15000
+
     parser = argparse.ArgumentParser()
     parser.add_argument('--batch_size', type=int, default=256,
                         help='size of training batches')
-    parser.add_argument('--num_iter', type=int, default=10000,
+    parser.add_argument('--num_iter', type=int, default=num_iters,
                         help='number of training iterations')
     parser.add_argument('--checkpoint_file_path', type=str,
                         default='checkpoints/model.ckpt',
