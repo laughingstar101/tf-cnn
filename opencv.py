@@ -16,7 +16,7 @@ def find_contours(image_path, args):
     if args.debug: cv2.imshow('Binary image', image_grey)
 
     # detect contours 
-    contours, hierarchy = cv2.findContours(image=thresh, mode=cv2.RETR_TREE, method=cv2.CHAIN_APPROX_NONE)
+    contours, hierarchy = cv2.findContours(image=thresh, mode=cv2.RETR_EXTERNAL, method=cv2.CHAIN_APPROX_NONE)
 
     sorted_ctrs = sorted(contours, key=lambda c: cv2.boundingRect(c)[0])
     marked_image = image.copy()
@@ -25,14 +25,17 @@ def find_contours(image_path, args):
         # Get boundoing box
         x, y, w, h = cv2.boundingRect(ctr)
 
+        area = cv2.contourArea(ctr)
+        if area < 100:
+            continue
+
         # Get ROI (region of interest)
         roi = image[y:y + h, x:x + w]
 
         # save only the ROI's which contain a valid information
-        if h > 50 and w > 100:
-            if args.debug: cv2.imshow(f'{i}', roi)
-            cv2.imwrite('roi\\{}.png'.format(i), roi)
-            cv2.rectangle(marked_image, (x, y), (x + w, y + h), (0, 255, 0), 2)
+        if args.debug: cv2.imshow(f'{i}', roi)
+        cv2.imwrite('roi\\{}.png'.format(i), roi)
+        cv2.rectangle(marked_image, (x, y), (x + w, y + h), (0, 255, 0), 2)
     
     if args.debug: cv2.imshow('Marked areas', marked_image)
 
