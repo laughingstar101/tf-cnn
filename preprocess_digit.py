@@ -3,6 +3,11 @@ import os
 import glob
 from PIL import Image, ImageFilter
 
+def upright_to_raw_emnist(image):
+    image = np.rot90(image, k=-1)   # clockwise
+    image = np.fliplr(image)
+    return image
+
 def otsu_threshold(hist):
     """Return the Otsu threshold for a histogram (array of length 256)."""
     total_pixels = sum(hist)
@@ -86,6 +91,7 @@ def process_image_to_mnist(image_path):
     canvas = np.zeros((28, 28), dtype=np.float32)
     canvas[4:24, 4:24] = resized
 
+    canvas = upright_to_raw_emnist(canvas)
     base = os.path.basename(image_path)
     name, ext = os.path.splitext(base)
     out_path = os.path.join("debug", f"processed_{name}.png")
