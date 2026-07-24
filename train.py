@@ -128,8 +128,8 @@ if __name__ == '__main__':
     parser.add_argument('--summary_dir', type=str,
                         default='graphs',
                         help='path to directory for storing summaries')
-    parser.add_argument('--early_stopping', action='store_true',
-                        help='enable early stopping based on validation accuracy')
+    parser.add_argument('--no_early_stopping', action='store_false', dest='early_stopping',
+                        help='disable early stopping')
     parser.add_argument('--patience', type=int, default=patience,
                         help='iterations to wait after last improvement before stopping')
     parser.add_argument('--min_delta', type=float, default=min_delta,
