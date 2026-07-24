@@ -1,9 +1,11 @@
 import numpy as np
+import pandas as pd
 
 IMAGE_SIZE = 28
 
 def load_train_data(data_path, validation_size=1000):
-    train_data = np.genfromtxt(data_path, delimiter=',', dtype=np.float32)
+    # train_data = np.genfromtxt(data_path, delimiter=',', dtype=np.float32)
+    train_data = pd.read_csv(data_path, header=None).values.astype(np.float32)
     x_train = train_data[:, 1:] / 255
     y_train = train_data[:, 0]
     y_train = (np.arange(10) == y_train[:, None]).astype(np.float32)
