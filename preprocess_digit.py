@@ -47,7 +47,6 @@ def process_image_to_mnist(image_path):
     binary = np.where(img_arr > thresh, 255, 0).astype(np.uint8)
 
     # 4. Ensure the digit is white (foreground) and background black
-    # If more than half the pixels are white, we've inverted (background is white)
     binary = 255 - binary
 
     # 5. Find bounding box of the digit (non-zero pixels)
