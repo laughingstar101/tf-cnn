@@ -1,6 +1,6 @@
 # EMNIST Digit Recognition
 
-A complete TensorFlow pipeline for handwritten digit recognition using EMNIST Digits. Train a CNN, evaluate per‑digit performance, and run end‑to‑end prediction on images containing multiple digits. Enables native GPU support on Windows using Tensorflow v2.10.1 (must install necessary compatible CUDA Tollkit v11.2 and cuDNN v8.1.0 libraries).
+A complete TensorFlow pipeline for handwritten digit recognition using EMNIST Digits. Train a CNN, evaluate per‑digit performance, and run end‑to‑end prediction on images containing multiple digits. Enables native GPU support on Windows using Tensorflow v2.10.1 (must install necessary compatible CUDA Toolkit v11.2 and cuDNN v8.1.0 libraries).
 
 ## Features
 - Convert EMNIST IDX files to CSV
