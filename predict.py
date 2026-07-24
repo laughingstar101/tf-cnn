@@ -50,6 +50,10 @@ if __name__ == "__main__":
 
     find_contours(path, args)
 
+    # Remove old processed images
+    for f in glob.glob(os.path.join("debug", "processed_*.png")):
+        os.remove(f)
+
     info_path = "roi/info.txt"
     if not os.path.isfile(info_path):
         print("[ERROR] info.txt not found.")
