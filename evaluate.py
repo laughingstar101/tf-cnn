@@ -10,6 +10,7 @@ import os
 
 def evaluate(args):
     test_images, test_labels = mnist.load_test_data(args.test_data)
+    num_test = test_images.shape[0]
 
     # If no specific checkpoint provided, find the latest one
     checkpoint_path = args.checkpoint_file_path
@@ -48,14 +49,35 @@ def evaluate(args):
             sess.run(tf.global_variables_initializer())
             saver.restore(sess, checkpoint_path)
 
-            pred_vals, true_vals, overall_acc = sess.run(
-                [predictions, true_labels, accuracy],
-                feed_dict={
-                    x: test_images,
-                    y: test_labels,
-                    keep_prob: 1.0
-                }
-            )
+            batch_size = args.batch_size
+            all_preds = []
+            all_true = []
+            total_correct = 0
+            total_samples = 0
+
+            for start in range(0, num_test, batch_size):
+                end = min(start + batch_size, num_test)
+                batch_x = test_images[start:end]
+                batch_y = test_labels[start:end]
+
+                pred_vals = sess.run(
+                    predictions,
+                    feed_dict={
+                        x: batch_x,
+                        y: batch_y,
+                        keep_prob: 1.0
+                    }
+                )
+                true_vals = np.argmax(batch_y, axis=1)
+
+                all_preds.extend(pred_vals)
+                all_true.extend(true_vals)
+                total_correct += np.sum(pred_vals == true_vals)
+                total_samples += len(batch_x)
+
+            all_preds = np.array(all_preds)
+            all_true = np.array(all_true)
+            overall_acc = total_correct / total_samples
 
             # ---- Per-Digit Statistics ----
             print("\n" + "="*50)
