@@ -6,4 +6,5 @@ dependencies = [
     "numpy<2",
     "pillow",
     "scipy",
+    "pandas",
 ]
