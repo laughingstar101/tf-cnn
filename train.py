@@ -74,10 +74,10 @@ def train(args):
                     )
 
                     if args.early_stopping:
-                        if val_acc > best_val_acc + 1e-3:
+                        if val_acc > best_val_acc + 0.0005:
                             best_val_acc = val_acc
                             patience_counter = 0
-                            saver.save(sess, args.checkpoint_file_path + "_best", global_step)
+                            saver.save(sess, args.checkpoint_file_path + "_best")
                         else:
                             patience_counter += 1
 
@@ -106,7 +106,7 @@ def train(args):
 
 if __name__ == '__main__':
     num_iters = 50000
-    patience = 10
+    patience = 20
 
     parser = argparse.ArgumentParser()
     parser.add_argument('--batch_size', type=int, default=256,
