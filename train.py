@@ -66,7 +66,7 @@ def train(args):
                         [train_op, loss, summary_op],
                         feed_dict={
                             keep_prob: 0.8,
-                            val_x: val_images,   # needed because summary includes val summaries
+                            val_x: val_images,
                             val_y: val_labels
                         }
                     )
