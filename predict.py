@@ -39,7 +39,7 @@ if __name__ == "__main__":
     import glob
     parser = argparse.ArgumentParser()
     parser.add_argument("image", help="path to image file")
-    parser.add_argument("--debug", type=int, default=0, help="debug")
+    parser.add_argument("--debug", action="store_true", dest='debug', help="debug")
     args = parser.parse_args()
 
     path = args.image
@@ -70,6 +70,7 @@ if __name__ == "__main__":
     if checkpoint is None:
         print("[ERROR] No checkpoint found")
         sys.exit(1)
+    print(f"Selected checkpoint: {checkpoint}")
 
     print(f"Original:\t{filename}")
     print("Predicted:\t", end='')
