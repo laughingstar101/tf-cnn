@@ -3,11 +3,18 @@ tf.compat.v1.logging.set_verbosity(tf.compat.v1.logging.ERROR)
 tf.disable_v2_behavior()
 import argparse
 import mnist
+import time
+import os
+os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
 from model import Model
 
 NUM_LABELS = 10
 
 def train(args):
+    timestamp = time.strftime("%Y%m%d-%H%M%S")
+    log_dir = os.path.join(args.summary_dir, timestamp)
+    os.makedirs(log_dir, exist_ok=True)
+    print(f"TensorBoard logs will be saved to: {log_dir}")
 
     model = Model()
     images, val_images, labels, val_labels = mnist.load_train_data(args.train_data)
@@ -37,8 +44,12 @@ def train(args):
     init = tf.global_variables_initializer()
     saver = tf.train.Saver()
 
-    with tf.Session(config=tf.ConfigProto(log_device_placement=True)) as sess:
-        writer = tf.summary.FileWriter(args.summary_dir, sess.graph)
+    best_val_acc = 0.0
+    patience_counter = 0
+    early_stop = False
+
+    with tf.Session(config=tf.ConfigProto(log_device_placement=False)) as sess:
+        writer = tf.summary.FileWriter(log_dir, sess.graph)
         sess.run(init)
         sess.run(iterator.initializer)
 
@@ -61,6 +72,20 @@ def train(args):
                         val_accuracy,
                         feed_dict={val_x: val_images, val_y: val_labels}
                     )
+
+                    if args.early_stopping:
+                        if val_acc > best_val_acc + 1e-3:
+                            best_val_acc = val_acc
+                            patience_counter = 0
+                            saver.save(sess, args.checkpoint_file_path + "_best", global_step)
+                        else:
+                            patience_counter += 1
+
+                        if patience_counter >= args.patience:
+                            print(f"Early stopping triggered at iteration {i}")
+                            early_stop = True
+                            break
+
                     print(f'Iter {i}, loss: {cur_loss:.4f}')
                     print(f'Validation Accuracy: {val_acc:.4f}')
                 else:
@@ -74,6 +99,10 @@ def train(args):
 
             except tf.errors.OutOfRangeError:
                 break
+
+        if early_stop:
+            saver.save(sess, args.checkpoint_file_path, global_step)
+            print("Model saved after early stopping.")
 
 if __name__ == '__main__':
     num_iters = 15000
@@ -92,5 +121,9 @@ if __name__ == '__main__':
     parser.add_argument('--summary_dir', type=str,
                         default='graphs',
                         help='path to directory for storing summaries')
+    parser.add_argument('--early_stopping', action='store_true',
+                        help='enable early stopping based on validation accuracy')
+    parser.add_argument('--patience', type=int, default=5,
+                        help='iterations to wait after last improvement before stopping')
     args = parser.parse_args()
     train(args)
