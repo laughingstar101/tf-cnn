@@ -12,7 +12,6 @@ def evaluate(args):
     test_images, test_labels = mnist.load_test_data(args.test_data)
     num_test = test_images.shape[0]
 
-    # If no specific checkpoint provided, find the latest one
     checkpoint_path = args.checkpoint_file_path
     if checkpoint_path == "checkpoints/model.ckpt" or checkpoint_path.endswith("model.ckpt") and not os.path.exists(checkpoint_path + ".index"):
         latest = tf.train.latest_checkpoint("checkpoints")
@@ -41,7 +40,6 @@ def evaluate(args):
         
         predictions = tf.argmax(logits, axis=1, name='predictions')
         true_labels = tf.argmax(y, axis=1, name='true_labels')
-        accuracy = model.accuracy(logits, y)
 
         saver = tf.train.Saver()
 
@@ -86,11 +84,11 @@ def evaluate(args):
             print(f"{'Digit':<8} | {'Correct':<10} | {'Wrong':<10} | {'Accuracy'}")
             print("-"*50)
 
-            total_correct = 0
-            total_wrong = 0
+            total_correct_per = 0
+            total_wrong_per = 0
 
             for digit in range(10):
-                mask = (true_vals == digit)
+                mask = (all_true == digit)
                 total_digit = np.sum(mask)
 
                 if total_digit == 0:
@@ -98,18 +96,18 @@ def evaluate(args):
                     wrong = 0
                     acc = 0.0
                 else:
-                    correct = np.sum(pred_vals[mask] == digit)
+                    correct = np.sum(all_preds[mask] == digit)
                     wrong = total_digit - correct
                     acc = correct / total_digit
 
-                total_correct += correct
-                total_wrong += wrong
+                total_correct_per += correct
+                total_wrong_per += wrong
 
                 print(f"{digit:<8} | {correct:<10} | {wrong:<10} | {acc:.2%}")
 
             print("-"*50)
-            print(f"Overall Accuracy (calculated): {total_correct / (total_correct + total_wrong):.4f}")
-            print(f"Overall Accuracy (from model):  {overall_acc:.4f}")
+            print(f"Overall Accuracy (calculated): {total_correct_per / (total_correct_per + total_wrong_per):.4f}")
+            print(f"Overall Accuracy (from batch aggregation):  {overall_acc:.4f}")
             print("="*50)
 
 if __name__ == '__main__':
@@ -125,6 +123,12 @@ if __name__ == '__main__':
         type=str,
         default='data/emnist_digits_test.csv',
         help='path to test data'
+    )
+    parser.add_argument(
+        '--batch_size',
+        type=int,
+        default=256,
+        help='batch size for evaluation (to avoid OOM)'
     )
 
     args = parser.parse_args()
