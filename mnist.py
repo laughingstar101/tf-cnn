@@ -27,7 +27,7 @@ def load_train_data(data_path, validation_size=1000):
     return x_train, x_val, y_train, y_val
 
 def load_test_data(data_path):
-    test_data = np.genfromtxt(data_path, delimiter=',', dtype=np.float32)
+    test_data = pd.read_csv(data_path, header=None).values.astype(np.float32)
     x_test = test_data[:, 1:] / 255
 
     y_test = np.array(test_data[:, 0])
