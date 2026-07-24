@@ -27,10 +27,12 @@ def find_contours(image_path):
         # Get ROI (region of interest)
         roi = image[y:y + h, x:x + w]
 
-        # show ROI
-        cv2.imshow('segment no:'+str(i),roi)
-        cv2.rectangle(image, (x, y), (x + w, y + h), (255, 0, 0), 1)
-        cv2.imwrite('roi\\{}.png'.format(i), roi)
+        # save only the ROI's which contain a valid information
+        if h > 50 and w > 100:
+            # show ROI
+            cv2.imshow('segment no:'+str(i),roi)
+            cv2.rectangle(image, (x, y), (x + w, y + h), (255, 0, 0), 1)
+            cv2.imwrite('roi\\{}.png'.format(i), roi)
     
     cv2.imshow('marked areas', image)
 
