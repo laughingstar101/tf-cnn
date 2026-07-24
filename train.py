@@ -105,7 +105,8 @@ def train(args):
             print("Model saved after early stopping.")
 
 if __name__ == '__main__':
-    num_iters = 15000
+    num_iters = 50000
+    patience = 10
 
     parser = argparse.ArgumentParser()
     parser.add_argument('--batch_size', type=int, default=256,
@@ -123,7 +124,7 @@ if __name__ == '__main__':
                         help='path to directory for storing summaries')
     parser.add_argument('--early_stopping', action='store_true',
                         help='enable early stopping based on validation accuracy')
-    parser.add_argument('--patience', type=int, default=5,
+    parser.add_argument('--patience', type=int, default=patience,
                         help='iterations to wait after last improvement before stopping')
     args = parser.parse_args()
     train(args)
