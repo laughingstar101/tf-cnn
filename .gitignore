@@ -182,7 +182,7 @@ cython_debug/
 
 .vscode
 
-*.csv
+/data
 
 /graphs
 /checkpoints
