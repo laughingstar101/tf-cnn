@@ -8,6 +8,12 @@ A complete TensorFlow pipeline for handwritten digit recognition using EMNIST Di
 - Training with early stopping and TensorBoard
 - Per‑digit accuracy breakdown on test set
 - Full prediction pipeline: contour detection → ROI extraction → preprocessing → classification
+- Robust prediction pipeline:
+  - Colour‑based foreground segmentation (LAB distance from background)
+  - Adaptive percentile threshold to handle faint digits of any colour
+  - Fallback to grayscale for images where colour is not discriminative
+  - Dynamic area filtering to adapt to different image sizes
+  - Morphological cleaning with larger kernels to close gaps
 - Debug mode to visualise each processing step
 
 ## Project Structure
@@ -15,8 +21,8 @@ A complete TensorFlow pipeline for handwritten digit recognition using EMNIST Di
 ├── train.py -> Training with early stopping  
 ├── evaluate.py -> Test evaluation with per‑digit stats  
 ├── predict.py -> End‑to‑end prediction from image  
-├── preprocess_digit.py -> Otsu threshold, centering, resize to 28×28  
-├── opencv.py -> Contour detection and ROI extraction  
+├── preprocess_digit.py -> Otsu threshold, centering, resize to 28×28 (applied per ROI)  
+├── opencv.py -> Robust contour detection using colour distance (LAB) and fallback  
 ├── model.py -> CNN architecture  
 ├── mnist.py -> Data loading helpers  
 ├── data/ -> CSV files (train/test)  
@@ -85,7 +91,7 @@ Predicted:   1234567890
 ```
 Enable debug visualisation (saves intermediate images to debug/):
 ```
-python predict.py path/to/image.png --debug 1
+python predict.py path/to/image.png --debug
 ```
 ## How It Works
 - Contour detection – finds and extracts each digit region.
