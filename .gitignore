@@ -187,3 +187,4 @@ cython_debug/
 /graphs
 /checkpoints
 *.png
+/roi
