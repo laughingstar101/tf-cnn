@@ -35,8 +35,13 @@ def train(args):
 
     val_x = tf.placeholder(tf.float32, shape=[None, 28, 28, 1], name='val_x')
     val_y = tf.placeholder(tf.float32, shape=[None, 10], name='val_y')
-    val_logits = model.inference(val_x, keep_prob=1.0)      # no dropout for validation
+    val_logits = model.inference(val_x, keep_prob=1.0)
     val_accuracy = model.accuracy(val_logits, val_y)
+    val_loss_op = tf.reduce_mean(
+        tf.nn.softmax_cross_entropy_with_logits(logits=val_logits, labels=val_y),
+        name='val_loss'
+    )
+    tf.summary.scalar('val_loss', val_loss_op)
 
     summary_op = tf.summary.merge_all()
     train_op = model.train(loss, global_step=global_step)
@@ -68,13 +73,13 @@ def train(args):
                     writer.add_summary(summary, i)
 
                     # Real validation accuracy
-                    val_acc = sess.run(
-                        val_accuracy,
+                    val_acc, val_loss = sess.run(
+                        [val_accuracy, val_loss_op],
                         feed_dict={val_x: val_images, val_y: val_labels}
                     )
 
                     if args.early_stopping:
-                        if val_acc > best_val_acc + 0.0005:
+                        if val_acc > best_val_acc + args.min_delta:
                             best_val_acc = val_acc
                             patience_counter = 0
                             saver.save(sess, args.checkpoint_file_path + "_best")
@@ -86,7 +91,7 @@ def train(args):
                             early_stop = True
                             break
 
-                    print(f'Iter {i}, loss: {cur_loss:.4f}')
+                    print(f'Iter {i}, train_loss: {cur_loss:.4f}, val_loss: {val_loss:.4f}')
                     print(f'Validation Accuracy: {val_acc:.4f}')
                 else:
                     _, cur_loss = sess.run(
@@ -107,6 +112,7 @@ def train(args):
 if __name__ == '__main__':
     num_iters = 50000
     patience = 20
+    min_delta = 0.0001
 
     parser = argparse.ArgumentParser()
     parser.add_argument('--batch_size', type=int, default=256,
@@ -126,5 +132,7 @@ if __name__ == '__main__':
                         help='enable early stopping based on validation accuracy')
     parser.add_argument('--patience', type=int, default=patience,
                         help='iterations to wait after last improvement before stopping')
+    parser.add_argument('--min_delta', type=float, default=min_delta,
+                        help='absolute improvement')
     args = parser.parse_args()
     train(args)
