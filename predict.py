@@ -5,6 +5,9 @@ import warnings
 warnings.filterwarnings('ignore')
 
 import tensorflow.compat.v1 as tf
+tf.compat.v1.logging.set_verbosity(tf.compat.v1.logging.ERROR)
+tf.disable_v2_behavior()
+
 from model import Model
 from preprocess_digit import process_image_to_mnist
 
@@ -62,12 +65,12 @@ if __name__ == "__main__":
             print(f"No image files found in directory")
             sys.exit(1)
 
+        print("-"*5)
         for filename in image_files:
             full_path = os.path.join(path, filename)
-            print("-"*5)
             print(filename)
-            print(f"-"*5)
             predict(full_path, checkpoint)
+            print("-"*5)
 
     else:
         print(f"Invalid mode. Use 'file' or 'folder'")

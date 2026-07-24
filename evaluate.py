@@ -1,6 +1,7 @@
 import argparse
 import numpy as np
 import tensorflow.compat.v1 as tf
+tf.compat.v1.logging.set_verbosity(tf.compat.v1.logging.ERROR)
 tf.disable_v2_behavior()
 
 import mnist

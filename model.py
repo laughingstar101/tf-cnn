@@ -1,5 +1,6 @@
 import tensorflow.compat.v1 as tf
-tf.disable_v2_behavior()   # force TF1.x behavior even in TF2
+tf.compat.v1.logging.set_verbosity(tf.compat.v1.logging.ERROR)
+tf.disable_v2_behavior()
 
 class Model(object):
     def __init__(self, batch_size=128, learning_rate=1e-3, num_labels=10):

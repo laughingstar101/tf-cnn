@@ -1,4 +1,6 @@
 import tensorflow.compat.v1 as tf
+tf.compat.v1.logging.set_verbosity(tf.compat.v1.logging.ERROR)
+tf.disable_v2_behavior()
 import argparse
 import mnist
 from model import Model
@@ -6,7 +8,6 @@ from model import Model
 NUM_LABELS = 10
 
 def train(args):
-    tf.disable_v2_behavior()
 
     model = Model()
     images, val_images, labels, val_labels = mnist.load_train_data(args.train_data)
