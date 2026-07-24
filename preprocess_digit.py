@@ -30,7 +30,7 @@ def otsu_threshold(hist):
             threshold = t
     return threshold
 
-def process_image_to_mnist(image_path):
+def process_image_to_mnist(image_path, mode=0):
     # 1. Open and convert to grayscale
     im = Image.open(image_path).convert('L')
     img_arr = np.array(im, dtype=np.uint8)
@@ -44,8 +44,7 @@ def process_image_to_mnist(image_path):
 
     # 4. Ensure the digit is white (foreground) and background black
     # If more than half the pixels are white, we've inverted (background is white)
-    if np.mean(binary) > 127:
-        binary = 255 - binary
+    binary = 255 - binary
 
     # 5. Find bounding box of the digit (non-zero pixels)
     rows = np.any(binary, axis=1)
@@ -71,9 +70,9 @@ def process_image_to_mnist(image_path):
         constant_values=0
     )
 
-    # 7. Resize to 20x20 with high-quality filter
+    # 7. Resize to 20x20
     pil_img = Image.fromarray(square)
-    pil_img = pil_img.resize((20, 20), Image.Resampling.LANCZOS).filter(ImageFilter.SHARPEN)
+    pil_img = pil_img.resize((20, 20), Image.Resampling.LANCZOS)
     resized = np.array(pil_img, dtype=np.float32)
 
     # 8. Normalize to 0-1 range
@@ -84,7 +83,12 @@ def process_image_to_mnist(image_path):
     canvas = np.zeros((28, 28), dtype=np.float32)
     canvas[4:24, 4:24] = resized
 
-    return canvas.reshape(1, 28, 28, 1)
+    if mode == 0:
+        return canvas.reshape(1, 28, 28, 1)
+    else:
+        out_img = (canvas * 255).astype(np.uint8)
+        Image.fromarray(out_img, mode='L').save("processed_output.png")
+        return "processed_output.png"
 
 if __name__ == "__main__":
     import sys
