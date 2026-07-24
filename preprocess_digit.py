@@ -1,4 +1,6 @@
 import numpy as np
+import os
+import glob
 from PIL import Image, ImageFilter
 
 def otsu_threshold(hist):
@@ -30,7 +32,9 @@ def otsu_threshold(hist):
             threshold = t
     return threshold
 
-def process_image_to_mnist(image_path, mode=0):
+def process_image_to_mnist(image_path):
+    os.makedirs("debug", exist_ok=True)
+
     # 1. Open and convert to grayscale
     im = Image.open(image_path).convert('L')
     img_arr = np.array(im, dtype=np.uint8)
@@ -83,12 +87,14 @@ def process_image_to_mnist(image_path, mode=0):
     canvas = np.zeros((28, 28), dtype=np.float32)
     canvas[4:24, 4:24] = resized
 
-    if mode == 0:
-        return canvas.reshape(1, 28, 28, 1)
-    else:
-        out_img = (canvas * 255).astype(np.uint8)
-        Image.fromarray(out_img, mode='L').save("processed_output.png")
-        return "processed_output.png"
+    base = os.path.basename(image_path)
+    name, ext = os.path.splitext(base)
+    out_path = os.path.join("debug", f"processed_{name}.png")
+    out_img = (canvas * 255).astype(np.uint8)
+    for f in glob.glob(out_path): os.remove(f) # remove old files
+    Image.fromarray(out_img, mode='L').save(out_path)
+
+    return canvas.reshape(1, 28, 28, 1)
 
 if __name__ == "__main__":
     import sys
@@ -98,9 +104,4 @@ if __name__ == "__main__":
         processed = process_image_to_mnist(sys.argv[1])
         print(f"Processed image shape: {processed.shape}")
         print("Pixel value range:", processed.min(), "to", processed.max())
-
-        # Save preview
-        from PIL import Image
-        out_img = (processed[0, :, :, 0] * 255).astype(np.uint8)
-        Image.fromarray(out_img, mode='L').save("processed_output.png")
-        print("Saved preview as 'processed_output.png'")
+        print("Saved preview to debug/processed_<name>.png'")
