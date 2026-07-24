@@ -1,0 +1,117 @@
+# EMNIST Digit Recognition
+
+A complete TensorFlow pipeline for handwritten digit recognition using EMNIST Digits. Train a CNN, evaluate per‑digit performance, and run end‑to‑end prediction on images containing multiple digits.
+
+## Features
+- Convert EMNIST IDX files to CSV
+- 3‑layer convolutional neural network with dropout
+- Training with early stopping and TensorBoard
+- Per‑digit accuracy breakdown on test set
+- Full prediction pipeline: contour detection → ROI extraction → preprocessing → classification
+- Debug mode to visualise each processing step
+
+## Project Structure
+├── convert_emnist.py -> IDX → CSV converter  
+├── train.py -> Training with early stopping  
+├── evaluate.py -> Test evaluation with per‑digit stats  
+├── predict.py -> End‑to‑end prediction from image  
+├── preprocess_digit.py -> Otsu threshold, centering, resize to 28×28  
+├── opencv.py -> Contour detection and ROI extraction  
+├── model.py -> CNN architecture  
+├── mnist.py -> Data loading helpers  
+├── data/ -> CSV files (train/test)  
+├── checkpoints/ -> Saved model checkpoints  
+├── graphs/ -> TensorBoard logs  
+├── debug/ -> Debug images (optional)  
+└── roi/ -> Extracted digit regions  
+
+## Installation
+```
+pip install .
+```
+
+## Dataset Preparation
+1. Download EMNIST Digits IDX files from the official site: [biometrics.nist.gov/cs_links/EMNIST/gzip.zip](https://biometrics.nist.gov/cs_links/EMNIST/gzip.zip)
+2. Place them in data/ with names like emnist-digits-train-images-idx3-ubyte.gz.
+3. Convert to CSV:
+```python convert_emnist.py ```
+
+## Training
+```
+python train.py
+```
+
+## Key arguments:
+- --batch_size 256
+- --num_iter 50000
+- --checkpoint_file_path checkpoints/model.ckpt
+- --train_data data/emnist_digits_train.csv
+- --summary_dir graphs
+- --patience 20 (early stopping)
+- --min_delta 0.0001
+
+## Monitor with TensorBoard:
+```
+tensorboard --logdir graphs/
+```
+
+## Evaluation
+```
+python evaluate.py
+```
+
+## Example Output
+```
+==================================================
+Per-Digit Classification Breakdown
+==================================================
+Digit    | Correct   | Wrong     | Accuracy
+--------------------------------------------------
+0        | 1823      | 11        | 99.40%
+1        | 1853      | 7         | 99.62%
+...
+Overall Accuracy: 0.9909
+```
+
+## Prediction Pipeline
+Process an image with multiple handwritten digits:
+```
+python predict.py path/to/image.png
+```
+Output:
+```
+Original:    phone_number.png
+Predicted:   1234567890
+```
+Enable debug visualisation (saves intermediate images to debug/):
+```
+python predict.py path/to/image.png --debug 1
+```
+## How It Works
+- Contour detection – finds and extracts each digit region.
+- Preprocessing – applies Otsu thresholding, crops to bounding box, pads to square, resizes to 20×20, and centres on a 28×28 canvas.
+- Classification – feeds each processed digit through the trained CNN.
+
+## Model Architecture
+|Layer|	Details|
+|-|-|
+|Conv1|	5×5, 32 filters, ReLU, 2×2 pool|
+|Conv2| 5×5, 64 filters, ReLU, 2×2 pool|
+|Conv3|	3×3, 128 filters, ReLU|
+|FC1|	256 units, ReLU, dropout (0.8)|
+|FC2 (output)|	10 units (logits)|
+
+## Results
+Test accuracy: 99.41% on EMNIST Digits.
+|Digit    | Correct    | Wrong      | Accuracy|
+|---------|------------|------------|---------|
+|0        | 3984       | 16         | 99.60%|
+|1        | 3987       | 13         | 99.67%|
+|2        | 3976       | 24         | 99.40%|
+|3        | 3979       | 21         | 99.48%|
+|4        | 3984       | 16         | 99.60%|
+|5        | 3979       | 21         | 99.48%|
+|6        | 3975       | 25         | 99.38%|
+|7        | 3980       | 20         | 99.50%|
+|8        | 3955       | 45         | 98.88%|
+|9        | 3965       | 35         | 99.12%|
