@@ -41,7 +41,6 @@ def find_contours(image_path, args):
     filename = os.path.basename(image_path)
     with open("roi/info.txt", "w") as f:
         f.write(filename)
-    # Clean old ROIs
     for file in glob.glob("roi/*.png"):
         os.remove(file)
         if args.debug:
@@ -53,37 +52,33 @@ def find_contours(image_path, args):
         return
 
     # ---- Colour‑based segmentation ----
-    # Convert to LAB for perceptual distance
     lab = cv2.cvtColor(image, cv2.COLOR_BGR2LAB)
-    # Estimate background colour
     bg_lab = get_background_colour(image)
     if args.debug:
         print(f"[DEBUG] Background LAB: {bg_lab}")
 
-    # Compute per‑pixel Euclidean distance from background in LAB
     diff = lab - bg_lab.astype(np.float32)
-    dist = np.sqrt(np.sum(diff ** 2, axis=2)).astype(np.uint8)   # scale 0–255
+    dist = np.sqrt(np.sum(diff ** 2, axis=2)).astype(np.uint8)
 
-    # Threshold the distance map to separate foreground (high distance)
-    # Use Otsu on the distance map
-    _, binary_colour = cv2.threshold(dist, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
-    # Invert if necessary: we want digits as white (foreground)
+    # Use percentile threshold instead of Otsu
+    percentile = 60   # tune this (50–80) depending on your images
+    thresh_val = np.percentile(dist, percentile)
+    _, binary_colour = cv2.threshold(dist, thresh_val, 255, cv2.THRESH_BINARY)
+
     white_pixels = np.sum(binary_colour == 255)
     total_pixels = binary_colour.size
     if white_pixels > total_pixels // 2:
         binary_colour = cv2.bitwise_not(binary_colour)
 
-    # Morphological cleaning
-    kernel = np.ones((3, 3), np.uint8)
+    kernel = np.ones((5, 5), np.uint8)   # larger kernel
     binary_colour = cv2.morphologyEx(binary_colour, cv2.MORPH_CLOSE, kernel)
     binary_colour = cv2.morphologyEx(binary_colour, cv2.MORPH_OPEN, kernel)
 
-    # If colour segmentation yields too few or too many pixels, fallback to grayscale method
+    # Fallback if colour segmentation fails
     white_pixels = np.sum(binary_colour == 255)
     if white_pixels < 0.001 * total_pixels or white_pixels > 0.9 * total_pixels:
         if args.debug:
-            print("[DEBUG] Colour segmentation poor, falling back to grayscale method.")
-        # ---- Original grayscale approach ----
+            print("[DEBUG] Colour segmentation poor, falling back to grayscale.")
         gray_original = find_contrast_channel(image)
         clahe = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(8, 8))
         gray = clahe.apply(gray_original)
@@ -118,8 +113,8 @@ def find_contours(image_path, args):
     sorted_ctrs = sorted(contours, key=lambda c: cv2.boundingRect(c)[0])
     marked_image = image.copy()
 
-    # Dynamic minimum area (0.1% of image area)
-    min_area = 0.001 * image.shape[0] * image.shape[1]
+    # Dynamic minimum area
+    min_area = max(100, 0.001 * image.shape[0] * image.shape[1])
 
     for i, ctr in enumerate(sorted_ctrs):
         x, y, w, h = cv2.boundingRect(ctr)
