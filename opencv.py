@@ -6,14 +6,19 @@ from preprocess_digit import process_image_to_mnist
 
 def find_contours(image_path, args):
     os.makedirs("roi", exist_ok=True)
+    os.makedirs("debug", exist_ok=True)
+    filename = os.path.basename(image_path)
+    with open("roi/info.txt", "w") as f:
+        f.write(filename)
     for file in glob.glob("roi/*.png"):
         os.remove(file)
-        print(f"Removed file: {file}")
+        if args.debug: print(f"[DEBUG] Removed file: {file}")
 
     image = cv2.imread(image_path)
     image_grey = cv2.cvtColor(image, cv2.COLOR_RGB2GRAY)
     ret, thresh = cv2.threshold(image_grey, 127, 255, cv2.THRESH_BINARY_INV)
     if args.debug: cv2.imshow('Binary image', image_grey)
+    cv2.imwrite('debug/binary_image.png', image_grey)
 
     # detect contours 
     contours, hierarchy = cv2.findContours(image=thresh, mode=cv2.RETR_EXTERNAL, method=cv2.CHAIN_APPROX_NONE)
@@ -38,14 +43,15 @@ def find_contours(image_path, args):
         cv2.rectangle(marked_image, (x, y), (x + w, y + h), (0, 255, 0), 2)
     
     if args.debug: cv2.imshow('Marked areas', marked_image)
+    cv2.imwrite('debug/marked_image.png', marked_image)
 
     # draw contours
-    image_copy = image.copy()
-    cv2.drawContours(image=image_copy, contours=contours, contourIdx=-1, color=(0, 255, 0), thickness=2, lineType=cv2.LINE_AA)
+    contours_image = image.copy()
+    cv2.drawContours(image=contours_image, contours=contours, contourIdx=-1, color=(0, 255, 0), thickness=2, lineType=cv2.LINE_AA)
 
-    if args.debug: cv2.imshow('Contour approximation', image_copy)
+    if args.debug: cv2.imshow('Contour approximation', contours_image)
+    cv2.imwrite('debug/contours_image.png', contours_image)
     cv2.waitKey(0)
-    cv2.imwrite('contours_none_image1.png', image_copy)
     cv2.destroyAllWindows()
 
 if __name__ == "__main__":
