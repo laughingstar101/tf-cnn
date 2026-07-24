@@ -116,7 +116,7 @@ if __name__ == '__main__':
                         default='checkpoints/model.ckpt',
                         help='path to checkpoint file')
     parser.add_argument('--train_data', type=str,
-                        default='data/mnist_train.csv',
+                        default='data/emnist_digits_train.csv',
                         help='path to train and test data')
     parser.add_argument('--summary_dir', type=str,
                         default='graphs',

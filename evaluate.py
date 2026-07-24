@@ -101,7 +101,7 @@ if __name__ == '__main__':
     parser.add_argument(
         '--test_data', 
         type=str,
-        default='data/mnist_test.csv',
+        default='data/emnist_digits_test.csv',
         help='path to test data'
     )
 
