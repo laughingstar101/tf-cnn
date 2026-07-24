@@ -52,7 +52,11 @@ def process_image_to_mnist(image_path):
     binary = np.where(img_arr > thresh, 255, 0).astype(np.uint8)
 
     # 4. Ensure the digit is white (foreground) and background black
-    binary = 255 - binary
+    h, w = binary.shape
+    corners = [binary[0, 0], binary[0, w-1], binary[h-1, 0], binary[h-1, w-1]]
+    bg_is_white = np.mean(corners) > 127
+    if bg_is_white:
+        binary = 255 - binary
 
     # 5. Find bounding box of the digit (non-zero pixels)
     rows = np.any(binary, axis=1)
@@ -96,7 +100,6 @@ def process_image_to_mnist(image_path):
     name, ext = os.path.splitext(base)
     out_path = os.path.join("debug", f"processed_{name}.png")
     out_img = (canvas * 255).astype(np.uint8)
-    for f in glob.glob(out_path): os.remove(f) # remove old files
     Image.fromarray(out_img, mode='L').save(out_path)
 
     return canvas.reshape(1, 28, 28, 1)
