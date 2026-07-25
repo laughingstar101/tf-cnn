@@ -7,6 +7,9 @@ import time
 import os
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
 from model import Model
+import warnings
+warnings.filterwarnings('ignore')
+
 
 NUM_LABELS = 10
 
@@ -111,7 +114,7 @@ def train(args):
 
 if __name__ == '__main__':
     num_iters = 50000
-    patience = 20
+    patience = 30
     min_delta = 0.0001
 
     parser = argparse.ArgumentParser()

@@ -1,3 +1,9 @@
+import os
+os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
+
+import warnings
+warnings.filterwarnings('ignore')
+
 import argparse
 import numpy as np
 import tensorflow.compat.v1 as tf
@@ -6,7 +12,6 @@ tf.disable_v2_behavior()
 
 import mnist
 from model import Model
-import os
 
 def evaluate(args):
     test_images, test_labels = mnist.load_test_data(args.test_data)
@@ -106,8 +111,7 @@ def evaluate(args):
                 print(f"{digit:<8} | {correct:<10} | {wrong:<10} | {acc:.2%}")
 
             print("-"*50)
-            print(f"Overall Accuracy (calculated): {total_correct_per / (total_correct_per + total_wrong_per):.4f}")
-            print(f"Overall Accuracy (from batch aggregation):  {overall_acc:.4f}")
+            print(f"Overall Accuracy: {overall_acc:.2%}")
             print("="*50)
 
 if __name__ == '__main__':
