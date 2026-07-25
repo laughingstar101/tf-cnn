@@ -55,6 +55,7 @@ if __name__ == "__main__":
     # Remove old processed images
     for f in glob.glob(os.path.join("debug", "processed_*.png")):
         os.remove(f)
+        if args.debug: print(f"[DEBUG] Removed file: {f}")
 
     info_path = "roi/info.txt"
     if not os.path.isfile(info_path):
@@ -76,17 +77,21 @@ if __name__ == "__main__":
     if checkpoint is None:
         print("[ERROR] No checkpoint found")
         sys.exit(1)
-    print(f"Selected checkpoint: {checkpoint}")
+    if args.debug: print(f"[DEBUG] Selected checkpoint: {checkpoint}")
 
     avg_acc = 0
     print(f"Original:\t{filename}")
     print("Predicted:\t", end='')
+
     for roi_path in roi_files: # roi_files is a list of roi paths
         roi_name = os.path.basename(roi_path)
         digit, conf = predict(roi_path, checkpoint)
-        # if conf < 0.90:
-        #     continue
+        
+        if conf < 0.90:
+            continue
+
         avg_acc += conf
-        print(f"{digit} {conf:.2%}", end=' ')
+        print(digit, end='')
+
     avg_acc /= len(roi_files)
     print(f"\nAvg. Accuracy:\t{avg_acc:.2%}")
