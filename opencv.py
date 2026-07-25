@@ -122,7 +122,8 @@ def find_contours(image_path, args):
         if area < min_area:
             continue
 
-        roi = image[y:y + h, x:x + w]
+        roi = binary[y:y + h, x:x + w]
+
         if args.debug:
             cv2.imshow(f'ROI_{i}', roi)
         cv2.imwrite(f'roi/{i}.png', roi)
