@@ -25,12 +25,14 @@ def predict(path, checkpoint_path):
         model = Model()
         logits = model.inference(x, keep_prob=keep_prob)
         prediction = tf.argmax(logits, axis=1)
+        probabilities = tf.nn.softmax(logits)
+        confidence = tf.reduce_max(probabilities, axis=1)
 
         saver = tf.train.Saver()
         with tf.Session() as sess:
             saver.restore(sess, checkpoint_path)
-            pred = sess.run(prediction, feed_dict={x: input_batch, keep_prob: 1.0})
-            return pred[0]
+            pred, conf = sess.run([prediction, confidence], feed_dict={x: input_batch, keep_prob: 1.0})
+            return pred[0], conf[0]
 
 if __name__ == "__main__":
     import sys
@@ -76,9 +78,15 @@ if __name__ == "__main__":
         sys.exit(1)
     print(f"Selected checkpoint: {checkpoint}")
 
+    avg_acc = 0
     print(f"Original:\t{filename}")
     print("Predicted:\t", end='')
     for roi_path in roi_files: # roi_files is a list of roi paths
         roi_name = os.path.basename(roi_path)
-        digit = predict(roi_path, checkpoint)
-        print(digit, end='')
+        digit, conf = predict(roi_path, checkpoint)
+        # if conf < 0.90:
+        #     continue
+        avg_acc += conf
+        print(f"{digit} {conf:.2%}", end=' ')
+    avg_acc /= len(roi_files)
+    print(f"\nAvg. Accuracy:\t{avg_acc:.2%}")
