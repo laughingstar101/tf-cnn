@@ -80,18 +80,34 @@ if __name__ == "__main__":
     if args.debug: print(f"[DEBUG] Selected checkpoint: {checkpoint}")
 
     avg_acc = 0
+    digits = []
+    conf_scores = []
+    conf_thresh = 0.85
     print(f"Original:\t{filename}")
     print("Predicted:\t", end='')
 
     for roi_path in roi_files: # roi_files is a list of roi paths
         roi_name = os.path.basename(roi_path)
         digit, conf = predict(roi_path, checkpoint)
-        
-        if conf < 0.90:
-            continue
 
         avg_acc += conf
+        digits.append(digit)
+        conf_scores.append(conf)
+
+        if conf < conf_thresh:
+            continue
+
         print(digit, end='')
 
     avg_acc /= len(roi_files)
-    print(f"\nAvg. Accuracy:\t{avg_acc:.2%}")
+    print(f"\nAvg. Accuracy:\t{avg_acc:.2%}\n")
+
+    print("=" * 30)
+    print("Per-digit Accuracy Scores")
+    print("-" * 30)
+    for idx, digit_val in enumerate(digits):
+        if conf_scores[idx] < conf_thresh:
+            print(f"{digit_val}: {conf_scores[idx]:.2%} < {conf_thresh:.2%} (skipped)")
+        else:
+            print(f"{digit_val}: {conf_scores[idx]:.2%}")
+    print("=" * 30)
