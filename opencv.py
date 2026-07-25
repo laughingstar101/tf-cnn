@@ -122,11 +122,17 @@ def find_contours(image_path, args):
         if area < min_area:
             continue
 
+        contour_mask = np.zeros_like(binary)
+        cv2.drawContours(contour_mask, [ctr], -1, 255, -1)
+
+        mask_cropped = contour_mask[y:y + h, x:x + w]
+
         roi = binary[y:y + h, x:x + w]
+        roi_cleaned = cv2.bitwise_and(roi, roi, mask=mask_cropped)
 
         if args.debug:
-            cv2.imshow(f'ROI_{i}', roi)
-        cv2.imwrite(f'roi/{i}.png', roi)
+            cv2.imshow(f'ROI_{i}', roi_cleaned)
+        cv2.imwrite(f'roi/{i}.png', roi_cleaned)
         cv2.rectangle(marked_image, (x, y), (x + w, y + h), (0, 255, 0), 2)
 
     if args.debug:
