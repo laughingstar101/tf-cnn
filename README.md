@@ -47,7 +47,7 @@ pip install .
 python train.py
 ```
 
-## Key arguments:
+### Key arguments:
 - --batch_size 256
 - --num_iter 50000
 - --checkpoint_file_path checkpoints/model.ckpt
@@ -66,7 +66,7 @@ tensorboard --logdir graphs/
 python evaluate.py
 ```
 
-## Example Output
+### Example Output
 ```
 ==================================================
 Per-Digit Classification Breakdown
@@ -93,6 +93,7 @@ Enable debug visualisation (saves intermediate images to debug/):
 ```
 python predict.py path/to/image.png --debug
 ```
+
 ## How It Works
 - Contour detection – finds and extracts each digit region.
 - Preprocessing – applies Otsu thresholding, crops to bounding box, pads to square, resizes to 20×20, and centres on a 28×28 canvas.
