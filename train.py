@@ -1,126 +1,74 @@
-import tensorflow.compat.v1 as tf
-tf.compat.v1.logging.set_verbosity(tf.compat.v1.logging.ERROR)
-tf.disable_v2_behavior()
-import argparse
+import tensorflow as tf
+import tensorflow_addons as tfa
 import mnist
-import time
+import argparse
 import os
-os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
+import time
 from model import Model
 import warnings
 warnings.filterwarnings('ignore')
 
-
-NUM_LABELS = 10
-
 def train(args):
-    timestamp = time.strftime("%Y%m%d-%H%M%S")
-    log_dir = os.path.join(args.summary_dir, timestamp)
-    os.makedirs(log_dir, exist_ok=True)
-    print(f"TensorBoard logs will be saved to: {log_dir}")
-
-    model = Model()
+    # Load data
     images, val_images, labels, val_labels = mnist.load_train_data(args.train_data)
 
-    # Training dataset
-    dataset = tf.data.Dataset.from_tensor_slices((images, labels))
-    dataset = dataset.shuffle(10000).batch(args.batch_size).repeat().prefetch(1)
-    iterator = dataset.make_initializable_iterator()
-    next_x, next_y = iterator.get_next()
+    # Build model
+    model = Model(num_labels=10)
 
-    # Training placeholders
-    keep_prob = tf.placeholder(tf.float32, name='dropout_prob')
-    global_step = tf.train.get_or_create_global_step()
+    # AdamW optimizer
+    optimizer = tfa.optimizers.AdamW(learning_rate=1e-3, weight_decay=1e-4)
 
-    logits = model.inference(next_x, keep_prob=keep_prob)
-    loss = model.loss(logits=logits, labels=next_y)
-    train_acc = model.accuracy(logits, next_y)
-
-    val_x = tf.placeholder(tf.float32, shape=[None, 28, 28, 1], name='val_x')
-    val_y = tf.placeholder(tf.float32, shape=[None, 10], name='val_y')
-    val_logits = model.inference(val_x, keep_prob=1.0)
-    val_accuracy = model.accuracy(val_logits, val_y)
-    val_loss_op = tf.reduce_mean(
-        tf.nn.softmax_cross_entropy_with_logits(logits=val_logits, labels=val_y),
-        name='val_loss'
+    model.compile(
+        optimizer=optimizer,
+        loss=tf.keras.losses.CategoricalCrossentropy(from_logits=True),
+        metrics=['accuracy']
     )
-    tf.summary.scalar('val_loss', val_loss_op)
 
-    summary_op = tf.summary.merge_all()
-    train_op = model.train(loss, global_step=global_step)
+    # Early stopping callback
+    early_stop = tf.keras.callbacks.EarlyStopping(
+        monitor='val_accuracy',
+        patience=args.patience,
+        min_delta=args.min_delta,
+        restore_best_weights=True,
+        verbose=1
+    )
 
-    init = tf.global_variables_initializer()
-    saver = tf.train.Saver()
+    # TensorBoard callback
+    log_dir = os.path.join(args.summary_dir, time.strftime("%Y%m%d-%H%M%S"))
+    tensorboard = tf.keras.callbacks.TensorBoard(log_dir=log_dir, histogram_freq=1)
 
-    best_val_acc = 0.0
-    patience_counter = 0
-    early_stop = False
+    # ModelCheckpoint callback to save best weights
+    checkpoint = tf.keras.callbacks.ModelCheckpoint(
+        args.checkpoint_file_path + "_best",
+        monitor='val_accuracy',
+        save_best_only=True,
+        save_weights_only=True,
+        verbose=1
+    )
 
-    with tf.Session(config=tf.ConfigProto(log_device_placement=False)) as sess:
-        writer = tf.summary.FileWriter(log_dir, sess.graph)
-        sess.run(init)
-        sess.run(iterator.initializer)
+    # Train
+    history = model.fit(
+        images, labels,
+        validation_data=(val_images, val_labels),
+        batch_size=args.batch_size,
+        epochs=args.epochs,
+        callbacks=[early_stop, tensorboard, checkpoint],
+        verbose=1
+    )
 
-        for i in range(args.num_iter):
-            try:
-                if i % 100 == 0:
-                    # Training step with summary
-                    _, cur_loss, summary = sess.run(
-                        [train_op, loss, summary_op],
-                        feed_dict={
-                            keep_prob: 0.8,
-                            val_x: val_images,
-                            val_y: val_labels
-                        }
-                    )
-                    writer.add_summary(summary, i)
-
-                    # Real validation accuracy
-                    val_acc, val_loss = sess.run(
-                        [val_accuracy, val_loss_op],
-                        feed_dict={val_x: val_images, val_y: val_labels}
-                    )
-
-                    if args.early_stopping:
-                        if val_acc > best_val_acc + args.min_delta:
-                            best_val_acc = val_acc
-                            patience_counter = 0
-                            saver.save(sess, args.checkpoint_file_path + "_best")
-                        else:
-                            patience_counter += 1
-
-                        if patience_counter >= args.patience:
-                            print(f"Early stopping triggered at iteration {i}")
-                            early_stop = True
-                            break
-
-                    print(f'Iter {i}, train_loss: {cur_loss:.4f}, val_loss: {val_loss:.4f}')
-                    print(f'Validation Accuracy: {val_acc:.4f}')
-                else:
-                    _, cur_loss = sess.run(
-                        [train_op, loss],
-                        feed_dict={keep_prob: 0.8}
-                    )
-
-                if i == args.num_iter - 1:
-                    saver.save(sess, args.checkpoint_file_path, global_step)
-
-            except tf.errors.OutOfRangeError:
-                break
-
-        if early_stop:
-            saver.save(sess, args.checkpoint_file_path, global_step)
-            print("Model saved after early stopping.")
+    # Save final model (weights only)
+    model.save_weights(args.checkpoint_file_path)
+    print("Training finished.")
 
 if __name__ == '__main__':
-    num_iters = 50000
-    patience = 30
+    epochs = 100
+    patience = 5
     min_delta = 0.0001
 
     parser = argparse.ArgumentParser()
     parser.add_argument('--batch_size', type=int, default=256,
                         help='size of training batches')
-    parser.add_argument('--num_iter', type=int, default=num_iters,
+    parser.add_argument('--epochs', type=int, default=epochs,
                         help='number of training iterations')
     parser.add_argument('--checkpoint_file_path', type=str,
                         default='checkpoints/model.ckpt',
@@ -131,8 +79,6 @@ if __name__ == '__main__':
     parser.add_argument('--summary_dir', type=str,
                         default='graphs',
                         help='path to directory for storing summaries')
-    parser.add_argument('--no_early_stopping', action='store_false', dest='early_stopping',
-                        help='disable early stopping')
     parser.add_argument('--patience', type=int, default=patience,
                         help='iterations to wait after last improvement before stopping')
     parser.add_argument('--min_delta', type=float, default=min_delta,

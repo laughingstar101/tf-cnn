@@ -1,113 +1,111 @@
+import tensorflow as tf
 import os
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
-
-import warnings
-warnings.filterwarnings('ignore')
-
-import tensorflow.compat.v1 as tf
-tf.compat.v1.logging.set_verbosity(tf.compat.v1.logging.ERROR)
-tf.disable_v2_behavior()
-
+import glob
+import numpy as np
 from model import Model
 from preprocess_digit import process_image_to_mnist
 from opencv import find_contours
+import warnings
+warnings.filterwarnings('ignore')
 
-def predict(path, checkpoint_path):
-    # 1. Process the image
-    input_batch = process_image_to_mnist(path)
-
-    # 2. Build a fresh graph for this prediction
-    with tf.Graph().as_default():
-        tf.disable_v2_behavior()
-
-        x = tf.placeholder(tf.float32, shape=[None, 28, 28, 1], name='x')
-        keep_prob = tf.placeholder(tf.float32, name='dropout_prob')
-        model = Model()
-        logits = model.inference(x, keep_prob=keep_prob)
-        prediction = tf.argmax(logits, axis=1)
-        probabilities = tf.nn.softmax(logits)
-        confidence = tf.reduce_max(probabilities, axis=1)
-
-        saver = tf.train.Saver()
-        with tf.Session() as sess:
-            saver.restore(sess, checkpoint_path)
-            pred, conf = sess.run([prediction, confidence], feed_dict={x: input_batch, keep_prob: 1.0})
-            return pred[0], conf[0]
-
-if __name__ == "__main__":
-    import sys
-    import os
+def main():
     import argparse
-    import glob
     parser = argparse.ArgumentParser()
     parser.add_argument("image", help="path to image file")
     parser.add_argument("--debug", action="store_true", dest='debug', help="debug")
     args = parser.parse_args()
 
     path = args.image
-
     if not os.path.isfile(path):
         print(f"[ERROR] {path} is not a valid file")
-        sys.exit(1)
+        return
 
+    # ---- Step 1: Segment digits ----
     find_contours(path, args)
 
-    # Remove old processed images
+    # Remove old processed debug images
     for f in glob.glob(os.path.join("debug", "processed_*.png")):
         os.remove(f)
         if args.debug: print(f"[DEBUG] Removed file: {f}")
 
+    # Read original filename
     info_path = "roi/info.txt"
     if not os.path.isfile(info_path):
         print("[ERROR] info.txt not found.")
-        sys.exit(1)
-
+        return
     with open(info_path, "r") as f:
         filename = f.readline().strip()
-    
+
+    # Get ROI files
     roi_files = glob.glob("roi/*.png")
     roi_files = [f for f in roi_files if os.path.basename(f).split('.')[0].isdigit()]
     roi_files.sort(key=lambda x: int(os.path.basename(x).split('.')[0]))
 
     if not roi_files:
         print("[ERROR] ROI files not found.")
-        sys.exit(1)
+        return
 
-    checkpoint = tf.train.latest_checkpoint("checkpoints")
-    if checkpoint is None:
-        print("[ERROR] No checkpoint found")
-        sys.exit(1)
-    if args.debug: print(f"[DEBUG] Selected checkpoint: {checkpoint}")
+    # ---- Step 2: Load model (latest checkpoint) ----
+    checkpoint_path = tf.train.latest_checkpoint("checkpoints")
+    if checkpoint_path is None:
+        best_path = "checkpoints/model.ckpt_best"
+        if os.path.exists(best_path + ".index"):
+            checkpoint_path = best_path
+            if args.debug:
+                print(f"[DEBUG] Using best checkpoint: {checkpoint_path}")
+        else:
+            print("[ERROR] No checkpoint found.")
+            return
+    else:
+        if args.debug:
+            print(f"[DEBUG] Using latest checkpoint: {checkpoint_path}")
 
-    avg_acc = 0
+    model = Model(num_labels=10)
+    model.build(input_shape=(None, 28, 28, 1))
+    status = model.load_weights(checkpoint_path)
+    status.expect_partial()
+
+    # ---- Step 3: Predict each ROI ----
     digits = []
-    conf_scores = []
+    confidences = []
     conf_thresh = 0.85
+
     print(f"Original:\t{filename}")
     print("Predicted:\t", end='')
 
-    for roi_path in roi_files: # roi_files is a list of roi paths
-        roi_name = os.path.basename(roi_path)
-        digit, conf = predict(roi_path, checkpoint)
+    for roi_path in roi_files:
+        # Preprocess ROI → (1, 28, 28, 1)
+        img = process_image_to_mnist(roi_path)
 
-        avg_acc += conf
+        # Predict
+        preds = model.predict(img, verbose=0)   # shape (1, 10)
+        digit = np.argmax(preds[0])
+        conf = np.max(tf.nn.softmax(preds[0]).numpy())
+
         digits.append(digit)
-        conf_scores.append(conf)
+        confidences.append(conf)
 
-        if conf < conf_thresh:
-            continue
+        # Print only if above threshold
+        if conf >= conf_thresh:
+            print(digit, end='')
+        else:
+            print('?', end='')
 
-        print(digit, end='')
+    # ---- Step 4: Summary ----
+    avg_acc = sum(confidences) / len(confidences)
 
-    avg_acc /= len(roi_files)
-    print(f"\nAvg. Accuracy:\t{avg_acc:.2%}\n")
-
-    print("=" * 30)
+    print("\n" + "=" * 30)
     print("Per-digit Accuracy Scores")
     print("-" * 30)
     for idx, digit_val in enumerate(digits):
-        if conf_scores[idx] < conf_thresh:
-            print(f"{digit_val}: {conf_scores[idx]:.2%} < {conf_thresh:.2%} (skipped)")
+        if confidences[idx] < conf_thresh:
+            print(f"{digit_val}: {confidences[idx]:.2%} < {conf_thresh:.2%} (skipped)")
         else:
-            print(f"{digit_val}: {conf_scores[idx]:.2%}")
+            print(f"{digit_val}: {confidences[idx]:.2%}")
+    print("-" * 30)
+    print(f"Avg. Accuracy:\t{avg_acc:.2%}")
     print("=" * 30)
+
+if __name__ == "__main__":
+    main()
