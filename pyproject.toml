@@ -8,4 +8,5 @@ dependencies = [
     "pillow",
     "scipy",
     "pandas",
+    "protobuf<3.20",
 ]
