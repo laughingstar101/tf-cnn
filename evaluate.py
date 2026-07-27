@@ -23,7 +23,7 @@ def evaluate(args):
         latest = tf.train.latest_checkpoint("checkpoints")
         if latest is not None:
             checkpoint_path = latest
-            print(f"Using latest checkpoint: {checkpoint_path}")
+            if args.debug: print(f"Using latest checkpoint: {checkpoint_path}")
         else:
             # Try best model
             best_path = "checkpoints/model.ckpt_best"
