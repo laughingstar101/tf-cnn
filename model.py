@@ -4,6 +4,16 @@ from tensorflow.keras import layers, Model # type: ignore
 class Model(Model):
     def __init__(self, num_labels=10):
         super(Model, self).__init__()
+
+        self.augment = tf.keras.Sequential([
+            layers.RandomTranslation(height_factor=(-0.1, 0.1), width_factor=(-0.1, 0.1)),
+            layers.RandomRotation(0.2),
+            layers.RandomZoom(height_factor=(-0.1, 0.1)),
+            layers.RandomBrightness(0.2),
+            layers.RandomContrast(0.2),
+            layers.GaussianNoise(stddev=0.1)
+        ])
+
         # Conv layers with ReLU
         self.conv1 = layers.Conv2D(32, (5, 5), padding='same', activation='relu')
         self.pool1 = layers.MaxPooling2D((2, 2))
@@ -17,7 +27,10 @@ class Model(Model):
         self.fc2 = layers.Dense(num_labels) # logits
 
     def call(self, inputs, training=False):
-        x = self.conv1(inputs)
+        x = inputs
+        if training:
+            x = self.augment(x)
+        x = self.conv1(x)
         x = self.pool1(x)
         x = self.conv2(x)
         x = self.pool2(x)
