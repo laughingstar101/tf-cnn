@@ -64,9 +64,10 @@ if __name__ == '__main__':
     epochs = 100
     patience = 5
     min_delta = 0.0001
+    batch_size = 512
 
     parser = argparse.ArgumentParser()
-    parser.add_argument('--batch_size', type=int, default=256,
+    parser.add_argument('--batch_size', type=int, default=batch_size,
                         help='size of training batches')
     parser.add_argument('--epochs', type=int, default=epochs,
                         help='number of training iterations')
