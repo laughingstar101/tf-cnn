@@ -5,6 +5,13 @@ class Model(Model):
     def __init__(self, num_labels=10):
         super(Model, self).__init__()
 
+        self.augment = tf.keras.Sequential([
+            layers.RandomTranslation(height_factor=(-0.1, 0.1), width_factor=(-0.1, 0.1)),
+            layers.RandomRotation(0.2),
+            layers.RandomZoom(height_factor=(-0.1, 0.1)),
+            layers.GaussianNoise(stddev=0.1)
+        ])
+
         # Conv layers with ReLU
         self.conv1 = layers.Conv2D(32, (5, 5), padding='same', activation='relu')
         self.pool1 = layers.MaxPooling2D((2, 2))
