@@ -91,9 +91,9 @@ def train(args):
 
 if __name__ == '__main__':
     epochs = 100
-    patience = 5
+    patience = 10
     min_delta = 0.0001
-    batch_size = 256
+    batch_size = 128
 
     parser = argparse.ArgumentParser()
     parser.add_argument('--batch_size', type=int, default=batch_size)

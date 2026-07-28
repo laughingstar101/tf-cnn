@@ -15,9 +15,11 @@ def create_model(num_labels=62):
         layers.Conv2D(128, (5, 5), padding='same', activation='relu'),
         layers.MaxPooling2D((2, 2)),
         layers.Conv2D(256, (3, 3), padding='same', activation='relu'),
+        layers.MaxPooling2D((2, 2)),
+        layers.Conv2D(512, (3, 3), padding='same', activation='relu'),
         layers.Flatten(),
         layers.Dense(512, activation='relu'),
-        layers.Dropout(0.4),
+        layers.Dropout(0.5),
         layers.Dense(num_labels)  # logits
     ])
     return model
