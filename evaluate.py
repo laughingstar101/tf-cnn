@@ -1,10 +1,11 @@
-import tensorflow as tf
 import numpy as np
 import mnist
 import argparse
-from model import Model
+from model import create_model
 import os
-os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
+os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
+os.environ["CUDA_VISIBLE_DEVICES"] = "0"
+import tensorflow as tf
 import warnings
 warnings.filterwarnings('ignore')
 
@@ -20,7 +21,7 @@ def evaluate(args):
     test_images, test_labels, num_class = mnist.load_test_data(args.test_data)
 
     # Build model and load best weights
-    model = Model(num_labels=num_class)
+    model = create_model(num_labels=num_class)
     model.build(input_shape=(None, 28, 28, 1))
 
     model.compile(optimizer='adam', loss='categorical_crossentropy', metrics=['accuracy'])
@@ -56,9 +57,9 @@ def evaluate(args):
 
     # Per-digit statistics
     print("\n" + "="*50)
-    print("Per-Digit Classification Breakdown")
+    print("Per-Character Classification Breakdown")
     print("="*50)
-    print(f"{'Digit':<8} | {'Correct':<10} | {'Wrong':<10} | {'Accuracy'}")
+    print(f"{'Character':<8} | {'Correct':<10} | {'Wrong':<10} | {'Accuracy'}")
     print("-"*50)
 
     total_correct = 0
@@ -75,7 +76,7 @@ def evaluate(args):
         total_correct += correct
         total_wrong += wrong
         char = mapping.get(cls, '?')
-        print(f"{cls:<8} | {char:<5} | {correct:<10} | {wrong:<10} | {acc:.2%}")
+        print(f"{char:<8} | {correct:<10} | {wrong:<10} | {acc:.2%}")
 
     print("-"*50)
     print(f"Overall Accuracy: {overall_acc:.2%}")
