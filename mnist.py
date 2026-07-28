@@ -7,7 +7,8 @@ def load_train_data(data_path, validation_size=1000):
     train_data = pd.read_csv(data_path, header=None, dtype=np.uint8).values.astype(np.float32)
     x_train = train_data[:, 1:] / 255
     y_train = train_data[:, 0]
-    y_train = (np.arange(10) == y_train[:, None]).astype(np.float32)
+    num_classes = len(np.unique(y_train))
+    y_train = (np.arange(num_classes) == y_train[:, None]).astype(np.float32)
 
     # Shuffle the data
     indices = np.random.permutation(len(x_train))
@@ -23,15 +24,16 @@ def load_train_data(data_path, validation_size=1000):
     x_train = x_train.reshape(len(x_train), IMAGE_SIZE, IMAGE_SIZE, 1)
     x_val = x_val.reshape(len(x_val), IMAGE_SIZE, IMAGE_SIZE, 1)
 
-    return x_train, x_val, y_train, y_val
+    return x_train, x_val, y_train, y_val, num_classes
 
 def load_test_data(data_path):
     test_data = pd.read_csv(data_path, header=None, dtype=np.uint8).values.astype(np.float32)
     x_test = test_data[:, 1:] / 255
 
     y_test = np.array(test_data[:, 0])
-    y_test = (np.arange(10) == y_test[:, None]).astype(np.float32)
+    num_classes = len(np.unique(y_test))  # Should be 62
+    y_test = (np.arange(num_classes) == y_test[:, None]).astype(np.float32)
 
     x_test = x_test.reshape(len(x_test), IMAGE_SIZE, IMAGE_SIZE, 1)
 
-    return x_test, y_test
+    return x_test, y_test, num_classes

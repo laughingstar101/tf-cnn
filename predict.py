@@ -9,6 +9,18 @@ from opencv import find_contours
 import warnings
 warnings.filterwarnings('ignore')
 
+def get_num_classes_from_mapping(mapping_path='data/emnist-byclass-mapping.txt'):
+    with open(mapping_path, 'r') as f:
+        return sum(1 for _ in f)
+
+def load_mapping(mapping_path='data/emnist-byclass-mapping.txt'):
+    mapping = {}
+    with open(mapping_path, 'r') as f:
+        for line in f:
+            idx, ascii_code = line.strip().split()
+            mapping[int(idx)] = chr(int(ascii_code))
+    return mapping
+
 def main():
     import argparse
     parser = argparse.ArgumentParser()
@@ -61,13 +73,17 @@ def main():
         if args.debug:
             print(f"[DEBUG] Using latest checkpoint: {checkpoint_path}")
 
-    model = Model(num_labels=10)
+    mapping = load_mapping()
+
+    num_classes = get_num_classes_from_mapping()
+
+    model = Model(num_labels=num_classes)
     model.build(input_shape=(None, 28, 28, 1))
     status = model.load_weights(checkpoint_path)
     status.expect_partial()
 
     # ---- Step 3: Predict each ROI ----
-    digits = []
+    predicted_chars  = []
     confidences = []
     conf_thresh = 0.85
 
@@ -75,36 +91,30 @@ def main():
     print("Predicted:\t", end='')
 
     for roi_path in roi_files:
-        # Preprocess ROI → (1, 28, 28, 1)
         img = process_image_to_mnist(roi_path)
+        preds = model.predict(img, verbose=0)
+        pred_class = np.argmax(preds[0])
+        confidence = np.max(tf.nn.softmax(preds[0]).numpy())
+        char = mapping.get(pred_class, '?')
+        predicted_chars.append(char)
+        confidences.append(confidence)
+        print(char, end='')
 
-        # Predict
-        preds = model.predict(img, verbose=0)   # shape (1, 10)
-        digit = np.argmax(preds[0])
-        conf = np.max(tf.nn.softmax(preds[0]).numpy())
-
-        digits.append(digit)
-        confidences.append(conf)
-
-        # Print only if above threshold
-        if conf >= conf_thresh:
-            print(digit, end='')
-        else:
-            print('?', end='')
+    print()
 
     # ---- Step 4: Summary ----
-    avg_acc = sum(confidences) / len(confidences)
+    avg_acc = sum(confidences) / len(confidences) if confidences else 0.0
 
     print("\n" + "=" * 30)
-    print("Per-digit Accuracy Scores")
+    print("Per-character Confidence Scores")
     print("-" * 30)
-    for idx, digit_val in enumerate(digits):
+    for idx, char in enumerate(predicted_chars):
         if confidences[idx] < conf_thresh:
-            print(f"{digit_val}: {confidences[idx]:.2%} < {conf_thresh:.2%} (skipped)")
+            print(f"{char}: {confidences[idx]:.2%} < {conf_thresh:.2%} (skipped)")
         else:
-            print(f"{digit_val}: {confidences[idx]:.2%}")
+            print(f"{char}: {confidences[idx]:.2%}")
     print("-" * 30)
-    print(f"Avg. Accuracy:\t{avg_acc:.2%}")
+    print(f"Avg. Confidence:\t{avg_acc:.2%}")
     print("=" * 30)
 
 if __name__ == "__main__":

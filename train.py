@@ -11,9 +11,9 @@ warnings.filterwarnings('ignore')
 tf.get_logger().setLevel('ERROR')
 
 def train(args):
-    images, val_images, labels, val_labels = mnist.load_train_data(args.train_data)
+    images, val_images, labels, val_labels, num_classes = mnist.load_train_data(args.train_data)
 
-    model = Model(num_labels=10)
+    model = Model(num_labels=num_classes)
 
     optimizer = tfa.optimizers.AdamW(learning_rate=1e-3, weight_decay=1e-4)
     model.compile(
@@ -21,25 +21,6 @@ def train(args):
         loss=tf.keras.losses.CategoricalCrossentropy(from_logits=True),
         metrics=['accuracy']
     )
-
-    # ---- CPU augmentation pipeline ----
-    train_dataset = tf.data.Dataset.from_tensor_slices((images, labels))
-    train_dataset = train_dataset.shuffle(10000).cache().repeat().batch(args.batch_size)
-
-    augment = tf.keras.Sequential([
-        tf.keras.layers.RandomTranslation(height_factor=(-0.05, 0.05), width_factor=(-0.05, 0.05)),
-        tf.keras.layers.RandomRotation(0.1),
-        tf.keras.layers.RandomZoom(height_factor=(-0.05, 0.05)),
-    ])
-
-    def augment_fn(x, y):
-        x = augment(x, training=True)
-        return x, y
-
-    train_dataset = train_dataset.map(augment_fn, num_parallel_calls=tf.data.AUTOTUNE)
-    train_dataset = train_dataset.prefetch(tf.data.AUTOTUNE)
-
-    steps_per_epoch = len(images) // args.batch_size
 
     # Callbacks
     early_stop = tf.keras.callbacks.EarlyStopping(
@@ -66,10 +47,10 @@ def train(args):
     )
 
     model.fit(
-        train_dataset,
+        images, labels,
         validation_data=(val_images, val_labels),
+        batch_size=args.batch_size,
         epochs=args.epochs,
-        steps_per_epoch=steps_per_epoch,
         callbacks=[early_stop, tensorboard, checkpoint],
         verbose=1
     )
@@ -92,7 +73,7 @@ if __name__ == '__main__':
                         default='checkpoints/model.ckpt',
                         help='path to checkpoint file')
     parser.add_argument('--train_data', type=str,
-                        default='data/emnist_digits_train.csv',
+                        default='data/emnist_byclass_train.csv',
                         help='path to train and test data')
     parser.add_argument('--summary_dir', type=str,
                         default='graphs',
