@@ -53,8 +53,7 @@ def train(args):
             tf.TensorShape([None, 28, 28, 1]),
             tf.TensorShape([None, num_classes])
         )
-    )
-    dataset = dataset.repeat().prefetch(tf.data.AUTOTUNE)
+    ).repeat().prefetch(tf.data.AUTOTUNE)
 
     steps_per_epoch = len(images) // args.batch_size
 
@@ -76,13 +75,20 @@ def train(args):
         save_weights_only=True,
         verbose=1
     )
+    reduce_lr = tf.keras.callbacks.ReduceLROnPlateau(
+        monitor='val_accuracy',
+        factor=0.5,
+        patience=5,
+        min_lr=1e-6,
+        verbose=1
+    )
 
     model.fit(
         dataset,
         validation_data=(val_images, val_labels),
         epochs=args.epochs,
         steps_per_epoch=steps_per_epoch,
-        callbacks=[early_stop, tensorboard, checkpoint],
+        callbacks=[early_stop, tensorboard, checkpoint, reduce_lr],
         verbose=1
     )
 
@@ -90,10 +96,10 @@ def train(args):
     print("Training finished.")
 
 if __name__ == '__main__':
-    epochs = 100
+    epochs = 20
     patience = 10
     min_delta = 0.0001
-    batch_size = 128
+    batch_size = 512
 
     parser = argparse.ArgumentParser()
     parser.add_argument('--batch_size', type=int, default=batch_size)
