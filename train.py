@@ -22,25 +22,6 @@ def train(args):
         metrics=['accuracy']
     )
 
-    # ---- CPU augmentation pipeline ----
-    train_dataset = tf.data.Dataset.from_tensor_slices((images, labels))
-    train_dataset = train_dataset.shuffle(10000).cache().repeat().batch(args.batch_size)
-
-    augment = tf.keras.Sequential([
-        tf.keras.layers.RandomTranslation(height_factor=(-0.05, 0.05), width_factor=(-0.05, 0.05)),
-        tf.keras.layers.RandomRotation(0.1),
-        tf.keras.layers.RandomZoom(height_factor=(-0.05, 0.05)),
-    ])
-
-    def augment_fn(x, y):
-        x = augment(x, training=True)
-        return x, y
-
-    train_dataset = train_dataset.map(augment_fn, num_parallel_calls=tf.data.AUTOTUNE)
-    train_dataset = train_dataset.prefetch(tf.data.AUTOTUNE)
-
-    steps_per_epoch = len(images) // args.batch_size
-
     # Callbacks
     early_stop = tf.keras.callbacks.EarlyStopping(
         monitor='val_accuracy',
@@ -66,10 +47,9 @@ def train(args):
     )
 
     model.fit(
-        train_dataset,
+        images, labels,
         validation_data=(val_images, val_labels),
         epochs=args.epochs,
-        steps_per_epoch=steps_per_epoch,
         callbacks=[early_stop, tensorboard, checkpoint],
         verbose=1
     )

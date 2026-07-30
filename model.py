@@ -25,6 +25,8 @@ class Model(Model):
 
     def call(self, inputs, training=False):
         x = inputs
+        if training:
+            x = self.augment(x)
         x = self.conv1(x)
         x = self.pool1(x)
         x = self.conv2(x)
