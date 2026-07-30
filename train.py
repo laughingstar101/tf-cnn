@@ -10,12 +10,6 @@ import warnings
 warnings.filterwarnings('ignore')
 tf.get_logger().setLevel('ERROR')
 
-def scheduler(epoch, lr):
-    initial_lr = 1e-3
-    drop_rate = 0.25
-    epochs_drop = 5
-    return initial_lr * (drop_rate ** (epoch // epochs_drop))
-
 def train(args):
     images, val_images, labels, val_labels = mnist.load_train_data(args.train_data)
 
@@ -34,10 +28,6 @@ def train(args):
         patience=args.patience,
         min_delta=args.min_delta,
         restore_best_weights=True,
-        verbose=1
-    )
-    lr_schedule = tf.keras.callbacks.LearningRateScheduler(
-        schedule=scheduler,
         verbose=1
     )
 
@@ -61,7 +51,7 @@ def train(args):
         validation_data=(val_images, val_labels),
         epochs=args.epochs,
         batch_size=args.batch_size,
-        callbacks=[early_stop, tensorboard, checkpoint, lr_schedule],
+        callbacks=[early_stop, tensorboard, checkpoint],
         verbose=1
     )
 
@@ -72,7 +62,7 @@ if __name__ == '__main__':
     epochs = 100
     patience = 10
     min_delta = 0.0001
-    batch_size = 256
+    batch_size = 128
 
     parser = argparse.ArgumentParser()
     parser.add_argument('--batch_size', type=int, default=batch_size,
