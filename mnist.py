@@ -3,7 +3,7 @@ import pandas as pd
 
 IMAGE_SIZE = 28
 
-def load_train_data(data_path, validation_size=1000):
+def load_train_data(data_path, validation_size=5000):
     train_data = pd.read_csv(data_path, header=None, dtype=np.uint8).values.astype(np.float32)
     x_train = train_data[:, 1:] / 255
     y_train = train_data[:, 0]
@@ -31,7 +31,7 @@ def load_test_data(data_path):
     x_test = test_data[:, 1:] / 255
 
     y_test = np.array(test_data[:, 0])
-    num_classes = len(np.unique(y_test))  # Should be 62
+    num_classes = len(np.unique(y_test))
     y_test = (np.arange(num_classes) == y_test[:, None]).astype(np.float32)
 
     x_test = x_test.reshape(len(x_test), IMAGE_SIZE, IMAGE_SIZE, 1)

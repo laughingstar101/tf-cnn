@@ -12,6 +12,7 @@ from model import create_model
 import warnings
 warnings.filterwarnings('ignore')
 tf.get_logger().setLevel('ERROR')
+from sklearn.utils.class_weight import compute_class_weight
 
 def batch_generator(images, labels, batch_size):
     """Yield batches from in-memory arrays without copying the whole dataset."""
@@ -38,7 +39,9 @@ def train(args):
 
     model = create_model(num_labels=num_classes)
 
-    optimizer = tfa.optimizers.AdamW(learning_rate=1e-3, weight_decay=1e-4)
+    learning_rate = 1e-3
+    weight_decay = 1e-4
+    optimizer = tfa.optimizers.AdamW(learning_rate=learning_rate, weight_decay=weight_decay)
     model.compile(
         optimizer=optimizer,
         loss=tf.keras.losses.CategoricalCrossentropy(from_logits=True),
@@ -56,6 +59,16 @@ def train(args):
     ).repeat().prefetch(tf.data.AUTOTUNE)
 
     steps_per_epoch = len(images) // args.batch_size
+
+    # ---- Learning Rate Scheduler (StepLR) ----
+    def step_lr_schedule(epoch):
+        initial_lr = learning_rate
+        drop = 0.5
+        epochs_drop = 5
+        lr = initial_lr * (drop ** (epoch // epochs_drop))
+        return lr
+
+    lr_scheduler = tf.keras.callbacks.LearningRateScheduler(step_lr_schedule, verbose=1)
 
     early_stop = tf.keras.callbacks.EarlyStopping(
         monitor='val_accuracy',
@@ -75,20 +88,18 @@ def train(args):
         save_weights_only=True,
         verbose=1
     )
-    reduce_lr = tf.keras.callbacks.ReduceLROnPlateau(
-        monitor='val_accuracy',
-        factor=0.5,
-        patience=5,
-        min_lr=1e-6,
-        verbose=1
-    )
+
+    raw_labels = np.argmax(labels, axis=1)
+    class_weights = compute_class_weight('balanced', classes=np.unique(raw_labels), y=raw_labels)
+    class_weights = dict(enumerate(class_weights))
 
     model.fit(
         dataset,
         validation_data=(val_images, val_labels),
         epochs=args.epochs,
         steps_per_epoch=steps_per_epoch,
-        callbacks=[early_stop, tensorboard, checkpoint, reduce_lr],
+        callbacks=[early_stop, tensorboard, checkpoint, lr_scheduler],
+        class_weight=class_weights,
         verbose=1
     )
 
@@ -96,7 +107,7 @@ def train(args):
     print("Training finished.")
 
 if __name__ == '__main__':
-    epochs = 20
+    epochs = 100
     patience = 10
     min_delta = 0.0001
     batch_size = 512
@@ -105,7 +116,7 @@ if __name__ == '__main__':
     parser.add_argument('--batch_size', type=int, default=batch_size)
     parser.add_argument('--epochs', type=int, default=epochs)
     parser.add_argument('--checkpoint_file_path', type=str, default='checkpoints/model.ckpt')
-    parser.add_argument('--train_data', type=str, default='data/emnist_byclass_train.csv')
+    parser.add_argument('--train_data', type=str, default='data/emnist_balanced_train.csv')
     parser.add_argument('--summary_dir', type=str, default='graphs')
     parser.add_argument('--patience', type=int, default=patience)
     parser.add_argument('--min_delta', type=float, default=min_delta)

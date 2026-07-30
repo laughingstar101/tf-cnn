@@ -10,11 +10,11 @@ from opencv import find_contours
 import warnings
 warnings.filterwarnings('ignore')
 
-def get_num_classes_from_mapping(mapping_path='data/emnist-byclass-mapping.txt'):
+def get_num_classes_from_mapping(mapping_path='data/emnist-balanced-mapping.txt'):
     with open(mapping_path, 'r') as f:
         return sum(1 for _ in f)
 
-def load_mapping(mapping_path='data/emnist-byclass-mapping.txt'):
+def load_mapping(mapping_path='data/emnist-balanced-mapping.txt'):
     mapping = {}
     with open(mapping_path, 'r') as f:
         for line in f:

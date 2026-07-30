@@ -14,7 +14,7 @@ def read_idx_labels(filename):
         data = np.frombuffer(f.read(), np.uint8, offset=8)
     return data
 
-def convert_emnist_to_csv(prefix='emnist-byclass', data_dir='data'):
+def convert_emnist_to_csv(prefix='emnist-balanced', data_dir='data'):
     train_images_path = os.path.join(data_dir, f'{prefix}-train-images-idx3-ubyte.gz')
     train_labels_path = os.path.join(data_dir, f'{prefix}-train-labels-idx1-ubyte.gz')
     test_images_path = os.path.join(data_dir, f'{prefix}-test-images-idx3-ubyte.gz')
@@ -33,8 +33,8 @@ def convert_emnist_to_csv(prefix='emnist-byclass', data_dir='data'):
     train_data = np.column_stack((y_train, x_train))
     test_data = np.column_stack((y_test, x_test))
 
-    train_csv = os.path.join(data_dir, 'emnist_byclass_train.csv')
-    test_csv = os.path.join(data_dir, 'emnist_byclass_test.csv')
+    train_csv = os.path.join(data_dir, 'emnist_balanced_train.csv')
+    test_csv = os.path.join(data_dir, 'emnist_balanced_test.csv')
 
     np.savetxt(train_csv, train_data, delimiter=',', fmt='%f')
     np.savetxt(test_csv, test_data, delimiter=',', fmt='%f')

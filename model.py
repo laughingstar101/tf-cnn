@@ -1,12 +1,40 @@
 import tensorflow as tf
 from tensorflow.keras import layers, Model # type: ignore
 
+class RandomShear(layers.Layer):
+    def __init__(self, shear_factor=0.1, fill_mode='CONSTANT', **kwargs):
+        super(RandomShear, self).__init__(**kwargs)
+        self.shear_factor = shear_factor
+        self.fill_mode = fill_mode
+
+    def call(self, inputs, training=None):
+        if not training:
+            return inputs
+        batch_size = tf.shape(inputs)[0]
+        shear = tf.random.uniform(
+            shape=[batch_size], 
+            minval=-self.shear_factor, 
+            maxval=self.shear_factor
+        )
+        ones = tf.ones([batch_size])
+        zeros = tf.zeros([batch_size])
+        transforms = tf.stack([ones, shear, zeros, zeros, ones, zeros, zeros, zeros], axis=1)
+        
+        return tf.raw_ops.ImageProjectiveTransformV2(
+            images=inputs,
+            transforms=transforms,
+            output_shape=tf.shape(inputs)[1:3],  # (height, width)
+            interpolation='BILINEAR',
+            fill_mode=self.fill_mode
+        )
+
 def create_model(num_labels=62):
     inputs = tf.keras.Input(shape=(28, 28, 1))
 
     x = layers.RandomTranslation(height_factor=(-0.05, 0.05),
                                  width_factor=(-0.05, 0.05))(inputs)
-    x = layers.RandomRotation(0.05)(x)
+    x = layers.RandomRotation(0.1)(x)
+    x = RandomShear(0.1)(x)
 
     def conv_block(x, filters, num_convs, pool=True):
         for _ in range(num_convs):
@@ -24,11 +52,11 @@ def create_model(num_labels=62):
     # Block 3: 3×256 → pool
     x = conv_block(x, 256, 3, pool=True)
     # Block 4: 3×256 → no pool (stays 3x3)
-    x = conv_block(x, 384, 4, pool=False)
+    x = conv_block(x, 512, 3, pool=False)
 
     x = layers.GlobalAveragePooling2D()(x)
 
-    layer_width = 128
+    layer_width = 256
     dropout_rate = 0.2
 
     orig = x
