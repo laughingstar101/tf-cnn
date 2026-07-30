@@ -28,7 +28,7 @@ def evaluate(args):
     model.compile(optimizer='adam', loss='categorical_crossentropy', metrics=['accuracy'])
 
     # Load latest checkpoint
-    checkpoint_path = args.checkpoint_file_path
+    checkpoint_path = args.checkpoint
     if checkpoint_path == "checkpoints/model.ckpt" or checkpoint_path.endswith("model.ckpt") and not os.path.exists(checkpoint_path + ".index"):
         latest = tf.train.latest_checkpoint("checkpoints")
         if latest is not None:
@@ -85,7 +85,7 @@ def evaluate(args):
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
-    parser.add_argument('--checkpoint_file_path', type=str, default='checkpoints/model.ckpt', help='path to checkpoint file (or base name, will auto-find latest)')
+    parser.add_argument('--checkpoint', type=str, default='checkpoints/model.ckpt', help='path to checkpoint file (or base name, will auto-find latest)')
     parser.add_argument('--test_data', type=str, default='data/emnist_balanced_test.csv', help='path to test data')
     parser.add_argument('--mapping_file', type=str, default='data/emnist-balanced-mapping.txt')
     parser.add_argument('--batch_size', type=int, default=256, help='batch size for evaluation (to avoid OOM)')
