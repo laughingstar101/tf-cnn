@@ -5,15 +5,21 @@ import argparse
 import os
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
 import time
-from model import Model
+from model import create_model
 import warnings
 warnings.filterwarnings('ignore')
 tf.get_logger().setLevel('ERROR')
 
+def scheduler(epoch, lr):
+    initial_lr = 1e-3
+    drop_rate = 0.25
+    epochs_drop = 5
+    return initial_lr * (drop_rate ** (epoch // epochs_drop))
+
 def train(args):
     images, val_images, labels, val_labels = mnist.load_train_data(args.train_data)
 
-    model = Model(num_labels=10)
+    model = create_model(num_labels=10)
 
     optimizer = tfa.optimizers.AdamW(learning_rate=1e-3, weight_decay=1e-4)
     model.compile(
@@ -30,6 +36,10 @@ def train(args):
         restore_best_weights=True,
         verbose=1
     )
+    lr_schedule = tf.keras.callbacks.LearningRateScheduler(
+        schedule=scheduler,
+        verbose=1
+    )
 
     log_dir = os.path.join(args.summary_dir, time.strftime("%Y%m%d-%H%M%S"))
     tensorboard = tf.keras.callbacks.TensorBoard(
@@ -39,7 +49,7 @@ def train(args):
     )
 
     checkpoint = tf.keras.callbacks.ModelCheckpoint(
-        args.checkpoint_file_path + "_best",
+        args.checkpoint + "_best",
         monitor='val_accuracy',
         save_best_only=True,
         save_weights_only=True,
@@ -50,11 +60,12 @@ def train(args):
         images, labels,
         validation_data=(val_images, val_labels),
         epochs=args.epochs,
-        callbacks=[early_stop, tensorboard, checkpoint],
+        batch_size=args.batch_size,
+        callbacks=[early_stop, tensorboard, checkpoint, lr_schedule],
         verbose=1
     )
 
-    model.save_weights(args.checkpoint_file_path)
+    model.save_weights(args.checkpoint)
     print("Training finished.")
 
 if __name__ == '__main__':
@@ -68,7 +79,7 @@ if __name__ == '__main__':
                         help='size of training batches')
     parser.add_argument('--epochs', type=int, default=epochs,
                         help='number of training epochs')
-    parser.add_argument('--checkpoint_file_path', type=str,
+    parser.add_argument('--checkpoint', type=str,
                         default='checkpoints/model.ckpt',
                         help='path to checkpoint file')
     parser.add_argument('--train_data', type=str,

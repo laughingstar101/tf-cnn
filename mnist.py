@@ -3,7 +3,7 @@ import pandas as pd
 
 IMAGE_SIZE = 28
 
-def load_train_data(data_path, validation_size=1000):
+def load_train_data(data_path, validation_size=5000):
     train_data = pd.read_csv(data_path, header=None, dtype=np.uint8).values.astype(np.float32)
     x_train = train_data[:, 1:] / 255
     y_train = train_data[:, 0]

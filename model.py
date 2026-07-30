@@ -1,38 +1,23 @@
 import tensorflow as tf
 from tensorflow.keras import layers, Model # type: ignore
 
-class Model(Model):
-    def __init__(self, num_labels=10):
-        super(Model, self).__init__()
-
-        self.augment = tf.keras.Sequential([
-            layers.RandomTranslation(height_factor=(-0.1, 0.1), width_factor=(-0.1, 0.1)),
-            layers.RandomRotation(0.2),
-            layers.RandomZoom(height_factor=(-0.1, 0.1)),
-            layers.GaussianNoise(stddev=0.1)
-        ])
-
-        # Conv layers with ReLU
-        self.conv1 = layers.Conv2D(32, (5, 5), padding='same', activation='relu')
-        self.pool1 = layers.MaxPooling2D((2, 2))
-        self.conv2 = layers.Conv2D(64, (5, 5), padding='same', activation='relu')
-        self.pool2 = layers.MaxPooling2D((2, 2))
-        self.conv3 = layers.Conv2D(128, (3, 3), padding='same', activation='relu')
-        self.flatten = layers.Flatten()
-        self.fc1 = layers.Dense(256, activation='relu')
-        self.dropout = layers.Dropout(0.2)
-        self.fc2 = layers.Dense(num_labels) # logits
-
-    def call(self, inputs, training=False):
-        x = inputs
-        if training:
-            x = self.augment(x)
-        x = self.conv1(x)
-        x = self.pool1(x)
-        x = self.conv2(x)
-        x = self.pool2(x)
-        x = self.conv3(x)
-        x = self.flatten(x)
-        x = self.fc1(x)
-        x = self.dropout(x, training=training)
-        return self.fc2(x)
+def create_model(num_labels=10):
+    model = tf.keras.Sequential([
+        layers.Input(shape=(28, 28, 1)),
+        # GPU augmentation layers
+        layers.RandomTranslation(height_factor=(-0.1, 0.1), width_factor=(-0.1, 0.1)),
+        layers.RandomRotation(0.2),
+        layers.RandomZoom(height_factor=(-0.1, 0.1)),
+        layers.GaussianNoise(stddev=0.1),
+        # Convolutional layers
+        layers.Conv2D(32, (5, 5), padding='same', activation='relu'),
+        layers.MaxPooling2D((2, 2)),
+        layers.Conv2D(64, (5, 5), padding='same', activation='relu'),
+        layers.MaxPooling2D((2, 2)),
+        layers.Conv2D(128, (3, 3), padding='same', activation='relu'),
+        layers.GlobalAveragePooling2D(),
+        layers.Dense(256, activation='relu'),
+        layers.Dropout(0.2),
+        layers.Dense(num_labels),
+    ])
+    return model

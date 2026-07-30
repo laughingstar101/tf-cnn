@@ -2,7 +2,7 @@ import tensorflow as tf
 import numpy as np
 import mnist
 import argparse
-from model import Model
+from model import create_model
 import os
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
 import warnings
@@ -12,13 +12,13 @@ def evaluate(args):
     test_images, test_labels = mnist.load_test_data(args.test_data)
 
     # Build model and load best weights
-    model = Model(num_labels=10)
+    model = create_model(num_labels=10)
     model.build(input_shape=(None, 28, 28, 1))
 
     model.compile(optimizer='adam', loss='categorical_crossentropy', metrics=['accuracy'])
 
     # Load latest checkpoint
-    checkpoint_path = args.checkpoint_file_path
+    checkpoint_path = args.checkpoint
     if checkpoint_path == "checkpoints/model.ckpt" or checkpoint_path.endswith("model.ckpt") and not os.path.exists(checkpoint_path + ".index"):
         latest = tf.train.latest_checkpoint("checkpoints")
         if latest is not None:
@@ -72,7 +72,7 @@ def evaluate(args):
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
-    parser.add_argument('--checkpoint_file_path', type=str, default='checkpoints/model.ckpt', help='path to checkpoint file (or base name, will auto-find latest)')
+    parser.add_argument('--checkpoint', type=str, default='checkpoints/model.ckpt', help='path to checkpoint file (or base name, will auto-find latest)')
     parser.add_argument('--test_data', type=str, default='data/emnist_digits_test.csv', help='path to test data')
     parser.add_argument('--batch_size', type=int, default=256, help='batch size for evaluation (to avoid OOM)')
     parser.add_argument('--debug', action="store_true", dest='debug', help='batch size for evaluation (to avoid OOM)')

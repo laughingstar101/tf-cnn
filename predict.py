@@ -3,7 +3,7 @@ import os
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
 import glob
 import numpy as np
-from model import Model
+from model import create_model
 from preprocess_digit import process_image_to_mnist
 from opencv import find_contours
 import warnings
@@ -61,7 +61,7 @@ def main():
         if args.debug:
             print(f"[DEBUG] Using latest checkpoint: {checkpoint_path}")
 
-    model = Model(num_labels=10)
+    model = create_model(num_labels=10)
     model.build(input_shape=(None, 28, 28, 1))
     status = model.load_weights(checkpoint_path)
     status.expect_partial()
