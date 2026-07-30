@@ -82,7 +82,7 @@ def train(args):
         histogram_freq=1
     )
     checkpoint = tf.keras.callbacks.ModelCheckpoint(
-        args.checkpoint_file_path + "_best",
+        args.checkpoint + "_best",
         monitor='val_accuracy',
         save_best_only=True,
         save_weights_only=True,
@@ -103,7 +103,7 @@ def train(args):
         verbose=1
     )
 
-    model.save_weights(args.checkpoint_file_path)
+    model.save_weights(args.checkpoint)
     print("Training finished.")
 
 if __name__ == '__main__':
@@ -115,7 +115,7 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('--batch_size', type=int, default=batch_size)
     parser.add_argument('--epochs', type=int, default=epochs)
-    parser.add_argument('--checkpoint_file_path', type=str, default='checkpoints/model.ckpt')
+    parser.add_argument('--checkpoint', type=str, default='checkpoints/model.ckpt')
     parser.add_argument('--train_data', type=str, default='data/emnist_balanced_train.csv')
     parser.add_argument('--summary_dir', type=str, default='graphs')
     parser.add_argument('--patience', type=int, default=patience)
