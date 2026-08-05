@@ -48,11 +48,11 @@ def diagnose_training(history):
 
     # Classification
     if acc_gap > 0.05:
-        print("\nThe model is *overfitting*. Training accuracy is much higher than validation.")
+        print("\nThe model is *overfitting*.")
     elif acc_gap < -0.02:
-        print("\nThe model is *underfitting*. Validation accuracy is higher than training.")
+        print("\nThe model is *underfitting*.")
     else:
-        print("\nThe model is *balanced*. Training and validation accuracy are close.")
+        print("\nThe model is *balanced*.")
 
     print("="*50 + "\n")
 
