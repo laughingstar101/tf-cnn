@@ -87,6 +87,14 @@ def train(args):
         verbose=1
     )
 
+    reduce_lr = tf.keras.callbacks.ReduceLROnPlateau(
+        monitor='val_accuracy',
+        factor=0.5,
+        patience=5,
+        min_lr=1e-6,
+        verbose=1
+    )
+
     log_dir = os.path.join(args.summary_dir, time.strftime("%Y%m%d-%H%M%S"))
     tensorboard = tf.keras.callbacks.TensorBoard(
         log_dir=log_dir,
@@ -107,7 +115,7 @@ def train(args):
         validation_data=(val_images, val_labels),
         epochs=args.epochs,
         batch_size=args.batch_size,
-        callbacks=[early_stop, tensorboard, checkpoint],
+        callbacks=[early_stop, tensorboard, checkpoint, reduce_lr],
         verbose=1
     )
 
