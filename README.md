@@ -3,7 +3,7 @@
 A complete TensorFlow pipeline for handwritten digit recognition using EMNIST Digits. Train a CNN, evaluate per‑digit performance, and run end‑to‑end prediction on images containing multiple digits. Enables native GPU support on Windows using Tensorflow v2.10.0 (must install necessary compatible CUDA Toolkit v11.2 and cuDNN v8.1.0 libraries). Only supports Python v3.10.  
 
 ## Notes
-Branch `main` is the model for EMNIST Digits. The other branches have models for other datasets.
+Branch `main` is the model for EMNIST Digits. The other branches host models for other datasets.
 
 ## Features
 - Convert EMNIST IDX files to CSV
@@ -40,9 +40,9 @@ pip install .
 ```
 
 ## Dataset Preparation
-1. Download EMNIST Digits IDX files from the official site: [biometrics.nist.gov/cs_links/EMNIST/gzip.zip](https://biometrics.nist.gov/cs_links/EMNIST/gzip.zip)
+1. Download EMNIST IDX files from the official site: [biometrics.nist.gov/cs_links/EMNIST/gzip.zip](https://biometrics.nist.gov/cs_links/EMNIST/gzip.zip)
 2. Place them in data/ with names like emnist-digits-train-images-idx3-ubyte.gz.
-3. Convert to CSV:
+3. Run the convert to CSV command:
 ```python convert_emnist.py ```
 
 ## Training
@@ -52,7 +52,7 @@ python train.py
 
 ### Key arguments:
 - --batch_size 256
-- --num_iter 50000
+- --epochs 100
 - --checkpoint_file_path checkpoints/model.ckpt
 - --train_data data/emnist_digits_train.csv
 - --summary_dir graphs
