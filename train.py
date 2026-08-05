@@ -3,12 +3,58 @@ import tensorflow_addons as tfa
 import mnist
 import argparse
 import os
+import numpy as np
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
 import time
 from model import create_model
 import warnings
 warnings.filterwarnings('ignore')
 tf.get_logger().setLevel('ERROR')
+
+def diagnose_training(history):
+    """Analyse training history and print a diagnosis."""
+    # Get training and validation metrics
+    train_acc = history.history['accuracy']
+    val_acc = history.history['val_accuracy']
+    train_loss = history.history['loss']
+    val_loss = history.history['val_loss']
+
+    # Find epoch with best validation accuracy
+    best_epoch = np.argmax(val_acc)
+    best_val_acc = val_acc[best_epoch]
+    best_train_acc = train_acc[best_epoch]
+    best_val_loss = val_loss[best_epoch]
+    best_train_loss = train_loss[best_epoch]
+
+    # Final metrics
+    final_train_acc = train_acc[-1]
+    final_val_acc = val_acc[-1]
+    final_train_loss = train_loss[-1]
+    final_val_loss = val_loss[-1]
+
+    # Compute gaps
+    acc_gap = final_train_acc - final_val_acc
+    loss_gap = final_val_loss - final_train_loss
+
+    print("\n" + "="*50)
+    print("TRAINING DIAGNOSIS")
+    print("="*50)
+    print(f"Best validation accuracy: {best_val_acc:.4f} (epoch {best_epoch+1})")
+    print(f"Training accuracy at best epoch: {best_train_acc:.4f}")
+    print(f"Final training accuracy: {final_train_acc:.4f}")
+    print(f"Final validation accuracy: {final_val_acc:.4f}")
+    print(f"Accuracy gap (train - val): {acc_gap:.4f}")
+    print(f"Loss gap (val - train): {loss_gap:.4f}")
+
+    # Classification
+    if acc_gap > 0.05:
+        print("\nThe model is *overfitting*. Training accuracy is much higher than validation.")
+    elif acc_gap < -0.02:
+        print("\nThe model is *underfitting*. Validation accuracy is higher than training.")
+    else:
+        print("\nThe model is *balanced*. Training and validation accuracy are close.")
+
+    print("="*50 + "\n")
 
 def get_dataset_name(data_path):
     """Extract dataset name from the CSV file path."""
@@ -21,7 +67,7 @@ def get_dataset_name(data_path):
         return 'unknown'
 
 def train(args):
-    images, val_images, labels, val_labels = mnist.load_train_data(args.train_data)
+    images, val_images, labels, val_labels = mnist.load_train_data(args.train_data, validation_size=10000)
 
     model = create_model(num_labels=10)
 
@@ -65,6 +111,8 @@ def train(args):
         verbose=1
     )
 
+    diagnose_training(history)
+
     # Save final weights with dataset name and accuracy
     best_val_acc = max(history.history['val_accuracy']) # 0.9018
     # Format: 0.9018 -> 9018
@@ -84,7 +132,7 @@ if __name__ == '__main__':
     epochs = 100
     patience = 10
     min_delta = 0.0001
-    batch_size = 128
+    batch_size = 512
 
     parser = argparse.ArgumentParser()
     parser.add_argument('--batch_size', type=int, default=batch_size,
