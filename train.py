@@ -10,6 +10,16 @@ import warnings
 warnings.filterwarnings('ignore')
 tf.get_logger().setLevel('ERROR')
 
+def get_dataset_name(data_path):
+    """Extract dataset name from the CSV file path."""
+    base = os.path.basename(data_path)
+    if 'balanced' in base:
+        return 'balanced'
+    elif 'digits' in base:
+        return 'digits'
+    else:
+        return 'unknown'
+
 def train(args):
     images, val_images, labels, val_labels = mnist.load_train_data(args.train_data)
 
@@ -33,7 +43,7 @@ def train(args):
 
     log_dir = os.path.join(args.summary_dir, time.strftime("%Y%m%d-%H%M%S"))
     tensorboard = tf.keras.callbacks.TensorBoard(
-        log_dir=log_dir, 
+        log_dir=log_dir,
         histogram_freq=1,
         profile_batch='2,5'
     )
@@ -46,7 +56,7 @@ def train(args):
         verbose=1
     )
 
-    model.fit(
+    history = model.fit(
         images, labels,
         validation_data=(val_images, val_labels),
         epochs=args.epochs,
@@ -54,6 +64,18 @@ def train(args):
         callbacks=[early_stop, tensorboard, checkpoint],
         verbose=1
     )
+
+    # Save final weights with dataset name and accuracy
+    best_val_acc = max(history.history['val_accuracy']) # 0.9018
+    # Format: 0.9018 -> 9018
+    acc_formatted = int(best_val_acc * 10000)
+
+    dataset_name = get_dataset_name(args.train_data)
+    final_checkpoint_name = f"model.ckpt_{dataset_name}-{acc_formatted}"
+    final_checkpoint_path = os.path.join('checkpoints', final_checkpoint_name)
+
+    model.save_weights(final_checkpoint_path)
+    print(f"Final model saved as: {final_checkpoint_path}")
 
     model.save_weights(args.checkpoint)
     print("Training finished.")
@@ -71,7 +93,7 @@ if __name__ == '__main__':
                         help='number of training epochs')
     parser.add_argument('--checkpoint', type=str,
                         default='checkpoints/model.ckpt',
-                        help='path to checkpoint file')
+                        help='base path for checkpoint files')
     parser.add_argument('--train_data', type=str,
                         default='data/emnist_digits_train.csv',
                         help='path to train and test data')
