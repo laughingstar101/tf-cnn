@@ -145,9 +145,9 @@ if __name__ == '__main__':
                         help='path to a single checkpoint file')
     parser.add_argument('--checkpoint_list', type=str, default=None,
                         help='comma-separated list of checkpoint files')
-    parser.add_argument('--auto_ensemble', action='store_false',
+    parser.add_argument('--no_auto_ensemble', action='store_false', dest='auto_ensemble', 
                         help='automatically ensemble all model.ckpt_digits-* checkpoints')
-    parser.add_argument('--tta', action='store_false',
+    parser.add_argument('--no_tta', action='store_false', dest='tta',
                         help='enable TTA (rotation + translation) inside the ensemble')
     parser.add_argument('--test_data', type=str, default='data/emnist_digits_test.csv',
                         help='path to test data')
