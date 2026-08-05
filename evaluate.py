@@ -106,8 +106,6 @@ def evaluate(args):
 
     print("-"*50)
     print(f"Overall Accuracy: {overall_acc:.2%}")
-    if args.tta:
-        print("(with rotation + translation TTA)")
     print("="*50)
 
 if __name__ == '__main__':
