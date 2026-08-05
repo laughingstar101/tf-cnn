@@ -1,5 +1,5 @@
 import tensorflow as tf
-from tensorflow.keras import layers, Model # type: ignore
+from tensorflow.keras import layers # type: ignore
 
 def create_model(num_labels=10):
     model = tf.keras.Sequential([
