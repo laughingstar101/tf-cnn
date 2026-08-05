@@ -93,7 +93,7 @@ def evaluate(args):
 
     print(f"Ensemble of {len(models)} models")
     if args.tta:
-        print("Using TTA")
+        if args.debug: print("Using TTA")
         preds = predict(models, test_images, args.batch_size)
     else:
         def simple_ensemble(model_list, images, batch_size):
