@@ -90,7 +90,7 @@ def train(args):
     reduce_lr = tf.keras.callbacks.ReduceLROnPlateau(
         monitor='val_accuracy',
         factor=0.5,
-        patience=5,
+        patience=3,
         min_lr=1e-6,
         verbose=1
     )
