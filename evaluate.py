@@ -2,6 +2,7 @@ import tensorflow as tf
 import numpy as np
 import mnist
 import argparse
+import glob
 from model import create_model
 import os
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
@@ -28,30 +29,40 @@ def apply_tta(batch, angles, translations):
 def evaluate(args):
     test_images, test_labels = mnist.load_test_data(args.test_data)
 
-    model = create_model(num_labels=10)
-    model.build(input_shape=(None, 28, 28, 1))
-    model.compile(optimizer='adam', loss='categorical_crossentropy', metrics=['accuracy'])
-
-    checkpoint_path = args.checkpoint
-    if checkpoint_path == "checkpoints/model.ckpt" or checkpoint_path.endswith("model.ckpt") and not os.path.exists(checkpoint_path + ".index"):
-        latest = tf.train.latest_checkpoint("checkpoints")
-        if latest is not None:
-            checkpoint_path = latest
-            if args.debug: print(f"Using latest checkpoint: {checkpoint_path}")
+    if args.auto_ensemble:
+        checkpoint_files = glob.glob("checkpoints/model.ckpt_digits-*.index")
+        checkpoints = [f.replace(".index", "") for f in checkpoint_files]
+        if not checkpoints:
+            print("[ERROR] No checkpoint files found for auto-ensemble.")
+            return
+        if args.debug:
+            print(f"Auto-ensemble using {len(checkpoints)} models:")
+            for ckpt in checkpoints:
+                print(f"  {ckpt}")
+    else:
+        if args.checkpoint_list:
+            checkpoints = args.checkpoint_list.split(',')
         else:
-            best_path = "checkpoints/model.ckpt_best"
-            if os.path.exists(best_path + ".index"):
-                checkpoint_path = best_path
-                if args.debug: print(f"[DEBUG] Using best checkpoint: {checkpoint_path}")
-            else:
-                print("[ERROR] No checkpoint found.")
-                return
-    status = model.load_weights(checkpoint_path)
-    status.expect_partial()
+            checkpoints = [args.checkpoint]
 
-    def predict_with_tta(model, images, batch_size,
-                         angles=[-0.1, 0.0, 0.1],
-                         translations=[(-2,0), (0,0), (2,0), (0,-2), (0,2)]):
+    models = []
+    for ckpt_path in checkpoints:
+        if args.debug:
+            print(f"Loading model: {ckpt_path}")
+        model = create_model(num_labels=10)
+        model.build(input_shape=(None, 28, 28, 1))
+        model.compile(optimizer='adam', loss='categorical_crossentropy', metrics=['accuracy'])
+        if ckpt_path.endswith(".ckpt") or ckpt_path.endswith(".index"):
+            ckpt_path = ckpt_path.replace(".index", "")
+        status = model.load_weights(ckpt_path)
+        status.expect_partial()
+        models.append(model)
+
+    # ---- Predict with Ensemble + TTA ----
+    def predict(model_list, images, batch_size,
+                                  angles=[-0.1, 0.0, 0.1],
+                                  translations=[(-2,0), (0,0), (2,0), (0,-2), (0,2)]):
+        """Ensemble predictions with TTA per model."""
         num_samples = images.shape[0]
         all_preds = []
 
@@ -59,24 +70,44 @@ def evaluate(args):
             end = min(start + batch_size, num_samples)
             batch = images[start:end]
 
-            aug_batch = apply_tta(batch, angles, translations)
+            # Get all augmented versions (once per batch)
+            aug_batch = apply_tta(batch, angles, translations) # (num_aug, batch, 28,28,1)
             num_aug = aug_batch.shape[0]
 
+            # Flatten augmentations
             flat_batch = tf.reshape(aug_batch, (-1, 28, 28, 1))
-            preds = model.predict(flat_batch, verbose=args.debug)
 
-            preds = tf.reshape(preds, (num_aug, -1, 10))
-            avg_pred = tf.reduce_mean(preds, axis=0).numpy()
-            all_preds.append(avg_pred)
+            # For each model, predict on all augmentations at once
+            model_preds = []
+            for model in model_list:
+                preds = model.predict(flat_batch, verbose=0) # (num_aug * batch, 10)
+                # Reshape to (num_aug, batch, 10) and average over augmentations
+                preds_reshaped = tf.reshape(preds, (num_aug, -1, 10))
+                avg_over_aug = tf.reduce_mean(preds_reshaped, axis=0) # (batch, 10)
+                model_preds.append(avg_over_aug)
+
+            avg_over_models = tf.reduce_mean(tf.stack(model_preds, axis=0), axis=0).numpy()
+            all_preds.append(avg_over_models)
 
         return np.vstack(all_preds)
 
+    print(f"Ensemble of {len(models)} models")
     if args.tta:
         print("Using TTA")
-        preds = predict_with_tta(model, test_images, args.batch_size)
+        preds = predict(models, test_images, args.batch_size)
     else:
-        print("Not using TTA")
-        preds = model.predict(test_images, batch_size=args.batch_size, verbose=args.debug)
+        def simple_ensemble(model_list, images, batch_size):
+            all_preds = []
+            for start in range(0, len(images), batch_size):
+                end = min(start + batch_size, len(images))
+                batch = images[start:end]
+                batch_preds = []
+                for model in model_list:
+                    batch_preds.append(model.predict(batch, verbose=0))
+                avg_pred = np.mean(batch_preds, axis=0)
+                all_preds.append(avg_pred)
+            return np.vstack(all_preds)
+        preds = simple_ensemble(models, test_images, args.batch_size)
 
     pred_classes = np.argmax(preds, axis=1)
     true_classes = np.argmax(test_labels, axis=1)
@@ -111,12 +142,17 @@ def evaluate(args):
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('--checkpoint', type=str, default='checkpoints/model.ckpt',
-                        help='path to checkpoint file (or base name, will auto-find latest)')
+                        help='path to a single checkpoint file')
+    parser.add_argument('--checkpoint_list', type=str, default=None,
+                        help='comma-separated list of checkpoint files')
+    parser.add_argument('--auto_ensemble', action='store_false',
+                        help='automatically ensemble all model.ckpt_digits-* checkpoints')
+    parser.add_argument('--tta', action='store_false',
+                        help='enable TTA (rotation + translation) inside the ensemble')
     parser.add_argument('--test_data', type=str, default='data/emnist_digits_test.csv',
                         help='path to test data')
     parser.add_argument('--batch_size', type=int, default=256,
                         help='batch size for evaluation')
     parser.add_argument('--debug', action="store_true", help='verbose output')
-    parser.add_argument('--tta', action="store_false", help='enable TTA (rotation + translation)')
     args = parser.parse_args()
     evaluate(args)
