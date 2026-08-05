@@ -9,16 +9,29 @@ import warnings
 warnings.filterwarnings('ignore')
 import tensorflow_addons as tfa
 
+# ---- Define TTA augmentations as a tf.function to avoid retracing ----
+@tf.function(experimental_relax_shapes=True)
+def apply_tta(batch, angles, translations):
+    """Apply rotations and translations to a batch and return all augmented versions."""
+    augmented = []
+    augmented.append(batch)
+    # Rotations
+    for angle in angles:
+        if angle != 0.0:
+            augmented.append(tfa.image.rotate(batch, angle, interpolation='BILINEAR'))
+    # Translations
+    for dx, dy in translations:
+        if dx != 0 or dy != 0:
+            augmented.append(tfa.image.translate(batch, [dx, dy], interpolation='BILINEAR'))
+    return tf.stack(augmented, axis=0) # shape: (num_aug, batch, h, w, c)
+
 def evaluate(args):
     test_images, test_labels = mnist.load_test_data(args.test_data)
 
-    # Build model and load best weights
     model = create_model(num_labels=10)
     model.build(input_shape=(None, 28, 28, 1))
-
     model.compile(optimizer='adam', loss='categorical_crossentropy', metrics=['accuracy'])
 
-    # Load checkpoint
     checkpoint_path = args.checkpoint
     if checkpoint_path == "checkpoints/model.ckpt" or checkpoint_path.endswith("model.ckpt") and not os.path.exists(checkpoint_path + ".index"):
         latest = tf.train.latest_checkpoint("checkpoints")
@@ -36,15 +49,9 @@ def evaluate(args):
     status = model.load_weights(checkpoint_path)
     status.expect_partial()
 
-    # ---- TTA prediction function ----
-    def predict_with_tta(model, images, batch_size, 
-                         angles=[-0.1, 0.0, 0.1], 
-                         translations=[(-2, 0), (0, 0), (2, 0), (0, -2), (0, 2)]):
-        """
-        Predict with TTA: original + rotations + translations.
-        angles: list of rotation angles in radians.
-        translations: list of (dx, dy) translation in pixels.
-        """
+    def predict_with_tta(model, images, batch_size,
+                         angles=[-0.1, 0.0, 0.1],
+                         translations=[(-2,0), (0,0), (2,0), (0,-2), (0,2)]):
         num_samples = images.shape[0]
         all_preds = []
 
@@ -52,29 +59,14 @@ def evaluate(args):
             end = min(start + batch_size, num_samples)
             batch = images[start:end]
 
-            preds = []
-            # Original (no augmentation)
-            pred_orig = model.predict(batch, verbose=args.debug)
-            preds.append(pred_orig)
+            aug_batch = apply_tta(batch, angles, translations)
+            num_aug = aug_batch.shape[0]
 
-            # Rotations
-            for angle in angles:
-                if angle == 0.0:
-                    continue
-                rotated = tfa.image.rotate(batch, angle, interpolation='BILINEAR')
-                pred = model.predict(rotated, verbose=args.debug)
-                preds.append(pred)
+            flat_batch = tf.reshape(aug_batch, (-1, 28, 28, 1))
+            preds = model.predict(flat_batch, verbose=args.debug)
 
-            # Translations
-            for dx, dy in translations:
-                if dx == 0 and dy == 0:
-                    continue
-                translated = tfa.image.translate(batch, [dx, dy], interpolation='BILINEAR')
-                pred = model.predict(translated, verbose=args.debug)
-                preds.append(pred)
-
-            # Average all predictions
-            avg_pred = np.mean(preds, axis=0)
+            preds = tf.reshape(preds, (num_aug, -1, 10))
+            avg_pred = tf.reduce_mean(preds, axis=0).numpy()
             all_preds.append(avg_pred)
 
         return np.vstack(all_preds)
@@ -83,15 +75,14 @@ def evaluate(args):
         print("Using TTA")
         preds = predict_with_tta(model, test_images, args.batch_size)
     else:
-        preds = model.predict(test_images, batch_size=args.batch_size)
+        print("Not using TTA")
+        preds = model.predict(test_images, batch_size=args.batch_size, verbose=args.debug)
 
     pred_classes = np.argmax(preds, axis=1)
     true_classes = np.argmax(test_labels, axis=1)
 
-    # Calculate overall accuracy
     overall_acc = np.mean(pred_classes == true_classes)
 
-    # Per-digit statistics
     print("\n" + "="*50)
     print("Per-Digit Classification Breakdown")
     print("="*50)
@@ -115,6 +106,8 @@ def evaluate(args):
 
     print("-"*50)
     print(f"Overall Accuracy: {overall_acc:.2%}")
+    if args.tta:
+        print("(with rotation + translation TTA)")
     print("="*50)
 
 if __name__ == '__main__':
@@ -126,6 +119,6 @@ if __name__ == '__main__':
     parser.add_argument('--batch_size', type=int, default=256,
                         help='batch size for evaluation')
     parser.add_argument('--debug', action="store_true", help='verbose output')
-    parser.add_argument('--tta', action="store_false", help='enable test-time augmentation (horizontal flip)')
+    parser.add_argument('--tta', action="store_false", help='enable TTA (rotation + translation)')
     args = parser.parse_args()
     evaluate(args)
