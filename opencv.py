@@ -4,6 +4,41 @@ import os
 import glob
 from preprocess_digit import process_image_to_mnist
 
+def sort_contours(contours):
+    """Sort contours: detect rows (by clustering center-y), then sort each row left-to-right."""
+    if not contours:
+        return contours
+
+    boxes = [cv2.boundingRect(c) for c in contours]
+    center_ys = [y + h/2 for (x, y, w, h) in boxes]
+    median_y = np.median(center_ys)
+    mad = np.median(np.abs(np.array(center_ys) - median_y)) if center_ys else 0
+
+    spread = max(center_ys) - min(center_ys) if center_ys else 0
+    row_threshold = max(1.5 * mad, 10) if mad > 0 else 10
+
+    if spread < row_threshold:
+        # Single row: just sort by x
+        return sorted(contours, key=lambda c: cv2.boundingRect(c)[0])
+    else:
+        # Multiple rows: split by median center-y
+        top_row = []
+        bottom_row = []
+        for c in contours:
+            x, y, w, h = cv2.boundingRect(c)
+            cy = y + h/2
+            if cy < median_y:
+                top_row.append(c)
+            else:
+                bottom_row.append(c)
+        # Sort each row by x, then combine
+        result = []
+        if top_row:
+            result.extend(sorted(top_row, key=lambda c2: cv2.boundingRect(c2)[0]))
+        if bottom_row:
+            result.extend(sorted(bottom_row, key=lambda c2: cv2.boundingRect(c2)[0]))
+        return result
+
 def find_contrast_channel(image):
     """Return the grayscale image from the channel with highest contrast."""
     if len(image.shape) == 2:
@@ -110,7 +145,7 @@ def find_contours(image_path, args):
 
     # Find contours
     contours, _ = cv2.findContours(binary, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_NONE)
-    sorted_ctrs = sorted(contours, key=lambda c: cv2.boundingRect(c)[0])
+    sorted_ctrs = sort_contours(contours)
     marked_image = image.copy()
 
     # Dynamic minimum area
