@@ -5,45 +5,43 @@ import glob
 from preprocess_digit import process_image_to_mnist
 
 def sort_contours(contours):
-    """Sort contours: detect rows (by clustering center-y), then sort each row left-to-right.
-       Returns: (sorted_contours, rows) where rows is a list of lists of contours per row.
-    """
+    """Sort contours: cluster rows by center-y, then sort each row left-to-right."""
     if not contours:
         return [], []
 
+    # Get bounding boxes and heights
     boxes = [cv2.boundingRect(c) for c in contours]
-    center_ys = [y + h/2 for (x, y, w, h) in boxes]
-    median_y = np.median(center_ys)
-    mad = np.median(np.abs(np.array(center_ys) - median_y)) if center_ys else 0
+    heights = [h for (x, y, w, h) in boxes]
+    median_height = np.median(heights) if heights else 28
 
-    spread = max(center_ys) - min(center_ys) if center_ys else 0
-    row_threshold = max(1.5 * mad, 10) if mad > 0 else 10
+    # Sort by center_y
+    sorted_contours = sorted(contours, key=lambda c: cv2.boundingRect(c)[1] + cv2.boundingRect(c)[3]/2)
 
-    if spread < row_threshold:
-        # Single row: just sort by x
-        sorted_ctrs = sorted(contours, key=lambda c: cv2.boundingRect(c)[0])
-        return sorted_ctrs, [sorted_ctrs]
-    else:
-        # Multiple rows: split by median center-y
-        top_row = []
-        bottom_row = []
-        for c in contours:
-            x, y, w, h = cv2.boundingRect(c)
-            cy = y + h/2
-            if cy < median_y:
-                top_row.append(c)
-            else:
-                bottom_row.append(c)
-        # Sort each row by x
-        top_row.sort(key=lambda c: cv2.boundingRect(c)[0])
-        bottom_row.sort(key=lambda c: cv2.boundingRect(c)[0])
-        rows = []
-        if top_row:
-            rows.append(top_row)
-        if bottom_row:
-            rows.append(bottom_row)
-        sorted_ctrs = [c for row in rows for c in row]
-        return sorted_ctrs, rows
+    rows = []
+    current_row = []
+    if not sorted_contours:
+        return [], []
+
+    # Start with the first contour's center_y as the row reference
+    first_c = sorted_contours[0]
+    current_center_y = cv2.boundingRect(first_c)[1] + cv2.boundingRect(first_c)[3]/2
+
+    for c in sorted_contours:
+        x, y, w, h = cv2.boundingRect(c)
+        center_y = y + h/2
+        if abs(center_y - current_center_y) < 1.2 * median_height:
+            current_row.append(c)
+        else:
+            # Different row: sort current row by x and add
+            rows.append(sorted(current_row, key=lambda c2: cv2.boundingRect(c2)[0]))
+            current_row = [c]
+            current_center_y = center_y
+
+    if current_row:
+        rows.append(sorted(current_row, key=lambda c2: cv2.boundingRect(c2)[0]))
+
+    sorted_ctrs = [c for row in rows for c in row]
+    return sorted_ctrs, rows
 
 def find_contrast_channel(image):
     """Return the grayscale image from the channel with highest contrast."""
@@ -91,6 +89,32 @@ def find_contours(image_path, args):
     if image is None:
         print(f"[ERROR] Could not read image: {image_path}")
         return
+
+    TARGET_MIN_DIM = 3000
+    TARGET_MAX_DIM = 3000
+    h, w = image.shape[:2]
+    max_side = max(h, w)
+    
+    if max_side > TARGET_MAX_DIM:
+        scale = TARGET_MAX_DIM / max_side
+        new_w = int(w * scale)
+        new_h = int(h * scale)
+        image = cv2.resize(image, (new_w, new_h), interpolation=cv2.INTER_AREA)
+        if args.debug:
+            print(f"[DEBUG] Downscaled from {w}x{h} to {new_w}x{new_h}")
+    elif max_side < TARGET_MIN_DIM:
+        scale = TARGET_MIN_DIM / max_side
+        new_w = int(w * scale)
+        new_h = int(h * scale)
+        image = cv2.resize(image, (new_w, new_h), interpolation=cv2.INTER_CUBIC)
+        if args.debug:
+            print(f"[DEBUG] Upscaled from {w}x{h} to {new_w}x{new_h}")
+    else:
+        if args.debug:
+            print(f"[DEBUG] Image size {w}x{h} is within target range, no resizing")
+
+    # Denoise
+    image = cv2.fastNlMeansDenoisingColored(image, None, h=10, hColor=10, templateWindowSize=7, searchWindowSize=21)
 
     # ---- Colour‑based segmentation ----
     lab = cv2.cvtColor(image, cv2.COLOR_BGR2LAB)
@@ -153,8 +177,15 @@ def find_contours(image_path, args):
     contours, _ = cv2.findContours(binary, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_NONE)
     sorted_ctrs, rows = sort_contours(contours)
 
-    # Draw row colours on a copy of the image
-    row_colors = [(0,255,0), (0,0,255), (255,0,0), (255,255,0), (0,255,255), (255,0,255)]
+    # Dynamic row colours
+    num_rows = len(rows)
+    # Generate distinct colours using HSV
+    row_colors = []
+    for i in range(num_rows):
+        hue = i * (180 / max(num_rows, 1))  # 0–180 hue range
+        color = cv2.cvtColor(np.uint8([[[hue, 255, 255]]]), cv2.COLOR_HSV2BGR)[0][0].tolist()
+        row_colors.append(tuple(color))
+
     rows_image = image.copy()
     for row_idx, row in enumerate(rows):
         color = row_colors[row_idx % len(row_colors)]
@@ -162,12 +193,13 @@ def find_contours(image_path, args):
             x, y, w, h = cv2.boundingRect(c)
             cv2.rectangle(rows_image, (x, y), (x + w, y + h), color, 2)
     cv2.imwrite('debug/_rows.png', rows_image)
-    if args.debug: cv2.imshow('Rows', rows_image)
+    if args.debug:
+        cv2.imshow('Rows', rows_image)
 
     marked_image = image.copy()
 
     # Dynamic minimum area
-    min_area = max(100, 0.001 * image.shape[0] * image.shape[1])
+    min_area = min(100, 0.001 * image.shape[0] * image.shape[1])
 
     for i, ctr in enumerate(sorted_ctrs):
         x, y, w, h = cv2.boundingRect(ctr)
