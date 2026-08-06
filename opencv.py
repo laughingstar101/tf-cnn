@@ -5,9 +5,11 @@ import glob
 from preprocess_digit import process_image_to_mnist
 
 def sort_contours(contours):
-    """Sort contours: detect rows (by clustering center-y), then sort each row left-to-right."""
+    """Sort contours: detect rows (by clustering center-y), then sort each row left-to-right.
+       Returns: (sorted_contours, rows) where rows is a list of lists of contours per row.
+    """
     if not contours:
-        return contours
+        return [], []
 
     boxes = [cv2.boundingRect(c) for c in contours]
     center_ys = [y + h/2 for (x, y, w, h) in boxes]
@@ -19,7 +21,8 @@ def sort_contours(contours):
 
     if spread < row_threshold:
         # Single row: just sort by x
-        return sorted(contours, key=lambda c: cv2.boundingRect(c)[0])
+        sorted_ctrs = sorted(contours, key=lambda c: cv2.boundingRect(c)[0])
+        return sorted_ctrs, [sorted_ctrs]
     else:
         # Multiple rows: split by median center-y
         top_row = []
@@ -31,13 +34,16 @@ def sort_contours(contours):
                 top_row.append(c)
             else:
                 bottom_row.append(c)
-        # Sort each row by x, then combine
-        result = []
+        # Sort each row by x
+        top_row.sort(key=lambda c: cv2.boundingRect(c)[0])
+        bottom_row.sort(key=lambda c: cv2.boundingRect(c)[0])
+        rows = []
         if top_row:
-            result.extend(sorted(top_row, key=lambda c2: cv2.boundingRect(c2)[0]))
+            rows.append(top_row)
         if bottom_row:
-            result.extend(sorted(bottom_row, key=lambda c2: cv2.boundingRect(c2)[0]))
-        return result
+            rows.append(bottom_row)
+        sorted_ctrs = [c for row in rows for c in row]
+        return sorted_ctrs, rows
 
 def find_contrast_channel(image):
     """Return the grayscale image from the channel with highest contrast."""
@@ -145,7 +151,19 @@ def find_contours(image_path, args):
 
     # Find contours
     contours, _ = cv2.findContours(binary, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_NONE)
-    sorted_ctrs = sort_contours(contours)
+    sorted_ctrs, rows = sort_contours(contours)
+
+    # Draw row colours on a copy of the image
+    row_colors = [(0,255,0), (0,0,255), (255,0,0), (255,255,0), (0,255,255), (255,0,255)]
+    rows_image = image.copy()
+    for row_idx, row in enumerate(rows):
+        color = row_colors[row_idx % len(row_colors)]
+        for c in row:
+            x, y, w, h = cv2.boundingRect(c)
+            cv2.rectangle(rows_image, (x, y), (x + w, y + h), color, 2)
+    cv2.imwrite('debug/rows.png', rows_image)
+    if args.debug: cv2.imshow('Rows', rows_image)
+
     marked_image = image.copy()
 
     # Dynamic minimum area
