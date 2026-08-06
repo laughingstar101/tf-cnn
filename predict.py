@@ -158,16 +158,13 @@ def main():
     print("Predicted:\t", end='')
 
     for roi_path in roi_files:
-        # Preprocess ROI → (1, 28, 28, 1)
         img = process_image_to_mnist(roi_path)
 
-        # Predict with ensemble + optional TTA
         digit, conf = predict(model_list, img, tta=args.tta)
 
         digits.append(digit)
         confidences.append(conf)
 
-        # Print only if above threshold
         if conf >= conf_thresh:
             print(digit, end='')
         else:
