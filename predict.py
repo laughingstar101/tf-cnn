@@ -143,10 +143,11 @@ def main():
             print(f"[DEBUG] Using checkpoint: {checkpoint_path}")
         model_list = load_models([checkpoint_path])
 
-    if args.tta:
-        print("Using ensemble + TTA")
-    else:
-        print("Using ensemble (no TTA)")
+    if args.debug:
+        if args.tta:
+            print("Using ensemble + TTA")
+        else:
+            print("Using ensemble (no TTA)")
 
     # ---- Step 3: Predict each ROI ----
     digits = []
