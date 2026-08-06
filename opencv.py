@@ -147,7 +147,7 @@ def find_contours(image_path, args):
 
     if args.debug:
         cv2.imshow('Binary', binary)
-    cv2.imwrite('debug/binary.png', binary)
+    cv2.imwrite('debug/_binary.png', binary)
 
     # Find contours
     contours, _ = cv2.findContours(binary, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_NONE)
@@ -161,7 +161,7 @@ def find_contours(image_path, args):
         for c in row:
             x, y, w, h = cv2.boundingRect(c)
             cv2.rectangle(rows_image, (x, y), (x + w, y + h), color, 2)
-    cv2.imwrite('debug/rows.png', rows_image)
+    cv2.imwrite('debug/_rows.png', rows_image)
     if args.debug: cv2.imshow('Rows', rows_image)
 
     marked_image = image.copy()
@@ -190,14 +190,14 @@ def find_contours(image_path, args):
 
     if args.debug:
         cv2.imshow('Marked areas', marked_image)
-    cv2.imwrite('debug/marked_image.png', marked_image)
+    cv2.imwrite('debug/_marked_image.png', marked_image)
 
     # Draw all contours (debugging)
     contours_image = image.copy()
     cv2.drawContours(contours_image, contours, -1, (0, 255, 0), 2, cv2.LINE_AA)
     if args.debug:
         cv2.imshow('Contour approximation', contours_image)
-    cv2.imwrite('debug/contours_image.png', contours_image)
+    cv2.imwrite('debug/_contours_image.png', contours_image)
 
     if args.debug:
         cv2.waitKey(0)
