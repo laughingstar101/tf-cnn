@@ -177,10 +177,11 @@ def main():
     print("Per-digit Accuracy Scores")
     print("-" * 30)
     for idx, digit_val in enumerate(digits):
-        if confidences[idx] < conf_thresh:
-            print(f"{digit_val}: {confidences[idx]:.2%} < {conf_thresh:.2%} (skipped)")
-        else:
-            print(f"{digit_val}: {confidences[idx]:.2%}")
+        if args.debug:
+            if confidences[idx] < conf_thresh:
+                print(f"{digit_val}: {confidences[idx]:.2%} < {conf_thresh:.2%} (skipped)")
+            else:
+                print(f"{digit_val}: {confidences[idx]:.2%}")
     print("-" * 30)
     print(f"Avg. Confidence:\t{avg_acc:.2%}")
     print("=" * 30)
