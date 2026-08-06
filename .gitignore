@@ -186,5 +186,6 @@ cython_debug/
 
 /graphs
 /checkpoints
-*.png
+/numbers
+/debug
 /roi
